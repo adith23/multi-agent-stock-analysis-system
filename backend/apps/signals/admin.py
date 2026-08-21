@@ -1,3 +1,18 @@
 from django.contrib import admin
 
-# Register your models here.
+from .models import (
+    ConvictionScorePackage,
+    RegimeState,
+    RegimeTransitionAlert,
+    SignalAgreementMatrix,
+    TechnicalSignal,
+)
+
+for model in (
+    ConvictionScorePackage,
+    RegimeState,
+    RegimeTransitionAlert,
+    SignalAgreementMatrix,
+    TechnicalSignal,
+):
+    admin.site.register(model)
