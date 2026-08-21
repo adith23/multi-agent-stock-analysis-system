@@ -1,0 +1,15 @@
+finbert:
+  model_name: ProsusAI/finbert
+  cache_path: ml_models/finbert
+  wrapper_version: 1.0.0
+
+regime_classifier:
+  artifact_path: ml_models/regime_classifier/regime_hmm.joblib
+  feature_order:
+    - yield_curve_slope
+    - vix
+    - credit_spread
+    - manufacturing_activity
+    - inflation_change
+    - unemployment_change
+  wrapper_version: 1.0.0

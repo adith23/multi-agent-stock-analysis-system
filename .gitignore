@@ -1,66 +1,123 @@
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-*.egg-info/
-dist/
-build/
-*.egg
+# ==============================================================================
+# Root .gitignore — Multi-Agent Stock Analysis System Monorepo
+# ==============================================================================
 
-# Virtual Environment
-venv/
-.venv/
-env/
-backend/venv/
-
-# Environment
+# ------------------------------------------------------------------------------
+# 1. Environment & Secrets
+# ------------------------------------------------------------------------------
 .env
 .env.*
 !.env.example
+*.pem
+*.key
+*.cert
+*.crt
+credentials.json
+service-account*.json
 
-# Django
-*.log
-db.sqlite3
+# ------------------------------------------------------------------------------
+# 2. Python & Virtual Environments (Root & Subdirs)
+# ------------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+env/
+ENV/
+backend/venv/
+backend/.venv/
+
+# ------------------------------------------------------------------------------
+# 3. Node & Frontend (Root & Subdirs)
+# ------------------------------------------------------------------------------
+node_modules/
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/build/
+frontend/dist/
+.pnpm-store/
+*.tsbuildinfo
+
+# ------------------------------------------------------------------------------
+# 4. Django, Databases & Static Assets
+# ------------------------------------------------------------------------------
+*.sqlite3
+*.sqlite3-journal
 backend/staticfiles/
 backend/media/
+backend/static_root/
+backend/media_root/
 
-# IDE
-.vscode/
+# ------------------------------------------------------------------------------
+# 5. Celery, Redis & LangGraph Checkpoints
+# ------------------------------------------------------------------------------
+celerybeat-schedule
+celerybeat-schedule.*
+celerybeat.pid
+*.dump
+dump.rdb
+scratch/
+checkpoints/
+
+# ------------------------------------------------------------------------------
+# 6. Testing, Quality & Code Coverage
+# ------------------------------------------------------------------------------
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.hypothesis/
+.coverage
+.coverage.*
+htmlcov/
+coverage/
+
+# ------------------------------------------------------------------------------
+# 7. AI/ML Heavy Weights & Cache Dirs
+# ------------------------------------------------------------------------------
+*.pt
+*.pth
+*.bin
+*.safetensors
+*.onnx
+*.h5
+*.ckpt
+backend/ml_models/finbert/*
+!backend/ml_models/finbert/README.md
+!backend/ml_models/finbert/.gitkeep
+backend/ml_models/regime_classifier/*.joblib
+!backend/ml_models/regime_classifier/README.md
+!backend/ml_models/regime_classifier/.gitkeep
+hf_cache/
+transformers_cache/
+torch_cache/
+
+# ------------------------------------------------------------------------------
+# 8. Docker Local Overrides
+# ------------------------------------------------------------------------------
+docker-compose.override.yml
+docker/docker-compose.override.yml
+
+# ------------------------------------------------------------------------------
+# 9. Logs
+# ------------------------------------------------------------------------------
+*.log
+logs/
+
+# ------------------------------------------------------------------------------
+# 10. IDEs, Editors & OS Files
+# ------------------------------------------------------------------------------
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
 .idea/
 *.swp
 *.swo
-
-# Docker
-docker-compose.override.yml
-
-# OS
+*~
 .DS_Store
 Thumbs.db
 desktop.ini
-
-# Node / Frontend
-node_modules/
-.next/
-out/
-.vercel/
-.turbo/
-*.tsbuildinfo
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnpm-debug.log*
-
-# Coverage
-htmlcov/
-.coverage
-.coverage.*
-
-# Testing
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-
-# Celery
-celerybeat-schedule
-celerybeat.pid
+$RECYCLE.BIN/

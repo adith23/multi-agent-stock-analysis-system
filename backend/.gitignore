@@ -1,0 +1,165 @@
+# ==============================================================================
+# Backend .gitignore — Production-Grade Python / Django / LangGraph / AI-ML
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# 1. Python Bytecode & Compiled Binaries
+# ------------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.pyd
+*.dll
+*.dylib
+
+# C extensions & Packaging
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# ------------------------------------------------------------------------------
+# 2. Virtual Environments
+# ------------------------------------------------------------------------------
+venv/
+.venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# ------------------------------------------------------------------------------
+# 3. Environment Variables, Keys & Secrets
+# ------------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+!.env.test.example
+*.pem
+*.key
+*.cert
+*.crt
+*.pfx
+*.p12
+credentials.json
+service-account*.json
+*token*.json
+
+# ------------------------------------------------------------------------------
+# 4. Django & Database Artifacts
+# ------------------------------------------------------------------------------
+*.sqlite3
+*.sqlite3-journal
+db.sqlite3
+test.sqlite3
+staticfiles/
+media/
+static_root/
+media_root/
+local_settings.py
+
+# ------------------------------------------------------------------------------
+# 5. Celery, Redis & Background Workers
+# ------------------------------------------------------------------------------
+celerybeat-schedule
+celerybeat-schedule.*
+celerybeat.pid
+*.dump
+dump.rdb
+
+# ------------------------------------------------------------------------------
+# 6. LangGraph, Checkpoints & Local Scratch Files
+# ------------------------------------------------------------------------------
+scratch/
+*.checkpoint
+checkpoints/
+
+# ------------------------------------------------------------------------------
+# 7. Testing, Coverage & Code Quality
+# ------------------------------------------------------------------------------
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+.tox/
+.nox/
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+nosetests.xml
+pytestdebug.log
+.cache/
+
+# ------------------------------------------------------------------------------
+# 8. AI/ML Model Weights, Caches & Heavy Artifacts
+# ------------------------------------------------------------------------------
+# Raw large weights (use DVC/Git LFS/model registry in production)
+*.pt
+*.pth
+*.bin
+*.safetensors
+*.onnx
+*.h5
+*.ckpt
+
+# FinBERT & Regime classifier local weight binaries (keep README & .gitkeep)
+ml_models/finbert/*
+!ml_models/finbert/README.md
+!ml_models/finbert/.gitkeep
+ml_models/regime_classifier/*.joblib
+!ml_models/regime_classifier/README.md
+!ml_models/regime_classifier/.gitkeep
+
+# HuggingFace & Torch local caches
+hf_cache/
+transformers_cache/
+torch_cache/
+
+# ------------------------------------------------------------------------------
+# 9. Logs & Runtime Diagnostics
+# ------------------------------------------------------------------------------
+*.log
+logs/
+*.log.*
+
+# ------------------------------------------------------------------------------
+# 10. IDEs, Editors & Operating System Metadata
+# ------------------------------------------------------------------------------
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+desktop.ini
+$RECYCLE.BIN/

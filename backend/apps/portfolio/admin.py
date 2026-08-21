@@ -1,3 +1,25 @@
 from django.contrib import admin
 
-# Register your models here.
+from .models import (
+    ExitStrategyPackage,
+    IdeaRanking,
+    PerformanceAttributionRecord,
+    PMRecommendation,
+    PMReviewRequest,
+    PortfolioConstructionOutput,
+    PositionSizingRecommendation,
+    ScenarioAnalysisResult,
+)
+
+admin.site.register(
+    (
+        ExitStrategyPackage,
+        IdeaRanking,
+        PMRecommendation,
+        PMReviewRequest,
+        PerformanceAttributionRecord,
+        PortfolioConstructionOutput,
+        PositionSizingRecommendation,
+        ScenarioAnalysisResult,
+    )
+)

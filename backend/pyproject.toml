@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools>=80"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "multi-agent-stock-analysis-system"
 version = "0.1.0"
@@ -11,25 +15,31 @@ target-version = ["py312"]
 [tool.ruff]
 line-length = 99
 target-version = "py312"
+exclude = ["**/migrations/*.py"]
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "N", "W", "UP"]
-ignore = ["E501"]
+select = ["E", "F", "I", "N", "W", "UP", "B", "SIM", "DJ"]
+ignore = ["E501", "DJ001"]
 
-[tool.isort]
-profile = "black"
-line_length = 99
-known_django = ["django", "rest_framework"]
-known_first_party = ["apps", "shared", "config"]
-sections = ["FUTURE", "STDLIB", "THIRDPARTY", "DJANGO", "FIRSTPARTY", "LOCALFOLDER"]
+[tool.ruff.lint.isort]
+known-first-party = ["agents", "apps", "config", "llm"]
 
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "config.settings.testing"
 python_files = ["test_*.py", "*_test.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-addopts = "-v --tb=short --strict-markers"
+addopts = "-ra --strict-markers --strict-config"
+testpaths = ["tests", "apps"]
 markers = [
-    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
-    "integration: marks integration tests requiring external services",
+    "integration: requires infrastructure beyond the test database",
 ]
+
+[tool.coverage.run]
+branch = true
+source = ["agents", "apps", "engines", "llm", "ml", "rules"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+fail_under = 80

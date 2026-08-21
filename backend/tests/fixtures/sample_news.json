@@ -1,0 +1,9 @@
+[
+  {
+    "headline": "Example issuer publishes quarterly results",
+    "summary": "A deterministic fixture used for normalization tests.",
+    "publishedAt": "2026-07-28T12:00:00Z",
+    "source": {"name": "Fixture Wire"},
+    "url": "https://example.test/quarterly-results"
+  }
+]
