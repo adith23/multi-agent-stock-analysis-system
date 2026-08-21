@@ -1,81 +1,114 @@
 # ==============================================================================
-# Root .gitignore — Multi-Agent Stock Analysis System Monorepo
+# Backend .gitignore — Production-Grade Python / Django / LangGraph / AI-ML
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
-# 1. Environment & Secrets
-# ------------------------------------------------------------------------------
-.env
-.env.*
-!.env.example
-*.pem
-*.key
-*.cert
-*.crt
-credentials.json
-service-account*.json
-
-# ------------------------------------------------------------------------------
-# 2. Python & Virtual Environments (Root & Subdirs)
+# 1. Python Bytecode & Compiled Binaries
 # ------------------------------------------------------------------------------
 __pycache__/
 *.py[cod]
 *$py.class
+*.so
+*.pyd
+*.dll
+*.dylib
+
+# C extensions & Packaging
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# ------------------------------------------------------------------------------
+# 2. Virtual Environments
+# ------------------------------------------------------------------------------
 venv/
 .venv/
 env/
 ENV/
-backend/venv/
-backend/.venv/
+env.bak/
+venv.bak/
 
 # ------------------------------------------------------------------------------
-# 3. Node & Frontend (Root & Subdirs)
+# 3. Environment Variables, Keys & Secrets
 # ------------------------------------------------------------------------------
-node_modules/
-frontend/node_modules/
-frontend/.next/
-frontend/out/
-frontend/build/
-frontend/dist/
-.pnpm-store/
-*.tsbuildinfo
+.env
+.env.*
+!.env.example
+!.env.test.example
+*.pem
+*.key
+*.cert
+*.crt
+*.pfx
+*.p12
+credentials.json
+service-account*.json
+*token*.json
 
 # ------------------------------------------------------------------------------
-# 4. Django, Databases & Static Assets
+# 4. Django & Database Artifacts
 # ------------------------------------------------------------------------------
 *.sqlite3
 *.sqlite3-journal
-backend/staticfiles/
-backend/media/
-backend/static_root/
-backend/media_root/
+db.sqlite3
+test.sqlite3
+staticfiles/
+media/
+static_root/
+media_root/
+local_settings.py
 
 # ------------------------------------------------------------------------------
-# 5. Celery, Redis & LangGraph Checkpoints
+# 5. Celery, Redis & Background Workers
 # ------------------------------------------------------------------------------
 celerybeat-schedule
 celerybeat-schedule.*
 celerybeat.pid
 *.dump
 dump.rdb
+
+# ------------------------------------------------------------------------------
+# 6. LangGraph, Checkpoints & Local Scratch Files
+# ------------------------------------------------------------------------------
 scratch/
+*.checkpoint
 checkpoints/
 
 # ------------------------------------------------------------------------------
-# 6. Testing, Quality & Code Coverage
+# 7. Testing, Coverage & Code Quality
 # ------------------------------------------------------------------------------
 .pytest_cache/
-.ruff_cache/
 .mypy_cache/
+.ruff_cache/
 .hypothesis/
+.tox/
+.nox/
+htmlcov/
 .coverage
 .coverage.*
-htmlcov/
-coverage/
+coverage.xml
+nosetests.xml
+pytestdebug.log
+.cache/
 
 # ------------------------------------------------------------------------------
-# 7. AI/ML Heavy Weights & Cache Dirs
+# 8. AI/ML Model Weights, Caches & Heavy Artifacts
 # ------------------------------------------------------------------------------
+# Raw large weights (use DVC/Git LFS/model registry in production)
 *.pt
 *.pth
 *.bin
@@ -83,30 +116,29 @@ coverage/
 *.onnx
 *.h5
 *.ckpt
-backend/ml_models/finbert/*
-!backend/ml_models/finbert/README.md
-!backend/ml_models/finbert/.gitkeep
-backend/ml_models/regime_classifier/*.joblib
-!backend/ml_models/regime_classifier/README.md
-!backend/ml_models/regime_classifier/.gitkeep
+
+# FinBERT & Regime classifier local weight binaries (keep README & .gitkeep)
+ml_models/finbert/*
+!ml_models/finbert/README.md
+!ml_models/finbert/.gitkeep
+ml_models/regime_classifier/*.joblib
+!ml_models/regime_classifier/README.md
+!ml_models/regime_classifier/.gitkeep
+
+# HuggingFace & Torch local caches
 hf_cache/
 transformers_cache/
 torch_cache/
 
 # ------------------------------------------------------------------------------
-# 8. Docker Local Overrides
-# ------------------------------------------------------------------------------
-docker-compose.override.yml
-docker/docker-compose.override.yml
-
-# ------------------------------------------------------------------------------
-# 9. Logs
+# 9. Logs & Runtime Diagnostics
 # ------------------------------------------------------------------------------
 *.log
 logs/
+*.log.*
 
 # ------------------------------------------------------------------------------
-# 10. IDEs, Editors & OS Files
+# 10. IDEs, Editors & Operating System Metadata
 # ------------------------------------------------------------------------------
 .vscode/*
 !.vscode/settings.json
@@ -117,7 +149,17 @@ logs/
 *.swp
 *.swo
 *~
+
+# macOS
 .DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
 Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
 desktop.ini
 $RECYCLE.BIN/

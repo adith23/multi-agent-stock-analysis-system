@@ -1,41 +1,96 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+# ==============================================================================
+# Frontend .gitignore — Production-Grade Next.js / React / TypeScript
+# ==============================================================================
 
-# dependencies
-/node_modules
-/.pnp
+# ------------------------------------------------------------------------------
+# 1. Dependencies & Package Managers
+# ------------------------------------------------------------------------------
+node_modules/
+.pnp
 .pnp.*
+.pnpm-store/
+
+# Yarn
 .yarn/*
 !.yarn/patches
 !.yarn/plugins
 !.yarn/releases
+!.yarn/sdks
 !.yarn/versions
 
-# testing
-/coverage
+# ------------------------------------------------------------------------------
+# 2. Build Outputs & Static Artifacts
+# ------------------------------------------------------------------------------
+.next/
+out/
+build/
+dist/
 
-# next.js
-/.next/
-/out/
+# ------------------------------------------------------------------------------
+# 3. Environment Variables & Secret Configuration
+# ------------------------------------------------------------------------------
+.env
+.env*.local
+.env.development.local
+.env.test.local
+.env.production.local
+!.env.example
 
-# production
-/build
-
-# misc
-.DS_Store
-*.pem
-
-# debug
+# ------------------------------------------------------------------------------
+# 4. Debug & Runtime Logs
+# ------------------------------------------------------------------------------
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-.pnpm-debug.log*
+pnpm-debug.log*
+lerna-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# ------------------------------------------------------------------------------
+# 5. Testing, Coverage & E2E Reports
+# ------------------------------------------------------------------------------
+coverage/
+.nyc_output/
+playwright-report/
+blob-report/
+test-results/
+.vitest/
 
-# vercel
+# ------------------------------------------------------------------------------
+# 6. Monorepo, Bundler & Deployment Caches
+# ------------------------------------------------------------------------------
 .vercel
+.turbo/
 
-# typescript
+# ------------------------------------------------------------------------------
+# 7. TypeScript & Type Generation Artifacts
+# ------------------------------------------------------------------------------
 *.tsbuildinfo
 next-env.d.ts
+
+# ------------------------------------------------------------------------------
+# 8. IDEs, Editors & Operating System Metadata
+# ------------------------------------------------------------------------------
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+desktop.ini
+$RECYCLE.BIN/
