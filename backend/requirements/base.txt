@@ -1,0 +1,46 @@
+# Django and API
+Django>=5.2,<6.0
+djangorestframework>=3.16,<4.0
+djangorestframework-simplejwt>=5.5,<6.0
+django-filter>=25.1,<26.0
+django-cors-headers>=4.7,<5.0
+django-environ>=0.12,<1.0
+django-guardian>=3.0,<4.0
+django-auditlog>=3.2,<4.0
+drf-spectacular>=0.28,<1.0
+
+# Agent orchestration and LLM
+langgraph>=1.0,<2.0
+langchain-core>=1.0,<2.0
+langchain-google-genai>=4.0,<5.0
+langgraph-checkpoint-postgres>=3.0,<4.0
+
+# Async execution and persistence
+celery[redis]>=5.6,<6.0
+django-celery-beat>=2.8,<3.0
+redis>=6.0,<7.0
+psycopg[binary,pool]>=3.2,<4.0
+
+# Resilience, schemas, and observability
+pydantic>=2.11,<3.0
+tenacity>=9.1,<10.0
+structlog>=25.4,<26.0
+django-structlog[celery]>=10.0,<11.0
+
+# Deterministic market-data ingestion
+finnhub-python>=2.4,<3.0
+fredapi>=0.5,<1.0
+edgartools>=4.0,<6.0
+yfinance>=1.4,<2.0
+newsapi-python>=0.2,<1.0
+httpx>=0.28,<1.0
+pandas>=2.2,<4.0
+numpy>=2.0,<3.0
+scipy>=1.15,<1.18
+pandas-ta>=0.4.71b0,<1.0
+PyPortfolioOpt>=1.6,<2.0
+hmmlearn>=0.3,<1.0
+scikit-learn>=1.7,<2.0
+joblib>=1.4,<2.0
+transformers>=4.50,<6.0
+torch>=2.6,<3.0

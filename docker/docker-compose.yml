@@ -1,0 +1,114 @@
+name: multi-agent-stock-analysis
+
+x-app-environment: &app-environment
+  DJANGO_SETTINGS_MODULE: config.settings.production
+  DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?DJANGO_SECRET_KEY is required}
+  DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1}
+  DJANGO_SECURE_SSL_REDIRECT: ${DJANGO_SECURE_SSL_REDIRECT:-False}
+  DATABASE_URL: postgresql://${POSTGRES_USER:-stockanalysis}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/${POSTGRES_DB:-stockanalysis}
+  LANGGRAPH_DATABASE_URL: postgresql://${POSTGRES_USER:-stockanalysis}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/${POSTGRES_DB:-stockanalysis}
+  REDIS_URL: redis://redis:6379/0
+  CELERY_BROKER_URL: redis://redis:6379/1
+  CELERY_RESULT_BACKEND: redis://redis:6379/2
+  GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+  LOG_LEVEL: ${LOG_LEVEL:-INFO}
+
+x-app-build: &app-build
+  context: ..
+  dockerfile: docker/Dockerfile
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-stockanalysis}
+      POSTGRES_USER: ${POSTGRES_USER:-stockanalysis}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    volumes:
+      - redis_data:/data
+
+  migrate:
+    build: *app-build
+    environment: *app-environment
+    command: ["python", "manage.py", "bootstrap_infrastructure"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  web:
+    build: *app-build
+    restart: unless-stopped
+    environment: *app-environment
+    ports:
+      - "${DJANGO_PORT:-8000}:8000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health/live/', timeout=3)",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  worker:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.celery
+    restart: unless-stopped
+    environment: *app-environment
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
+  beat:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.celery
+    restart: unless-stopped
+    environment: *app-environment
+    command:
+      [
+        "celery",
+        "-A",
+        "config",
+        "beat",
+        "--loglevel=INFO",
+        "--scheduler=django_celery_beat.schedulers:DatabaseScheduler",
+      ]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  redis_data:

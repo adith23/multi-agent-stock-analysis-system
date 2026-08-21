@@ -1,0 +1,7 @@
+-r base.txt
+-r test.txt
+
+black>=25.1,<26.0
+isort>=6.0,<7.0
+ruff>=0.12,<1.0
+
