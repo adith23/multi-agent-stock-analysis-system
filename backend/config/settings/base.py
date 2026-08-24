@@ -22,9 +22,13 @@ env = environ.Env(
     CORS_ALLOWED_ORIGINS=(list, ["http://localhost:3000"]),
 )
 
-environment_file = PROJECT_DIR / ".env"
-if environment_file.exists():
-    env.read_env(environment_file)
+backend_env = BASE_DIR / ".env"
+root_env = PROJECT_DIR / ".env"
+
+if backend_env.exists():
+    env.read_env(backend_env)
+elif root_env.exists():
+    env.read_env(root_env)
 
 SECRET_KEY = env("DJANGO_SECRET_KEY", default="unsafe-local-development-key")
 DEBUG = env.bool("DJANGO_DEBUG", default=False)
@@ -107,6 +111,8 @@ DATABASE_URL = env(
     default="postgresql://stockanalysis:stockanalysis@localhost:5432/stockanalysis",
 )
 DATABASES = {"default": env.db_url_config(DATABASE_URL)}
+DATABASES["default"]["CONN_HEALTH_CHECKS"] = True
+DATABASES["default"]["CONN_MAX_AGE"] = 60
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 AUTH_USER_MODEL = "users.User"

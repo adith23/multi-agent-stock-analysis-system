@@ -265,15 +265,32 @@ CREATE DATABASE stockanalysis OWNER stockanalysis;
 
 From the repository root:
 
-```bash
+```powershell
 # Windows PowerShell
-py -3.12 -m venv backend\venv
-.\backend\venv\Scripts\python.exe -m pip install --upgrade pip
-.\backend\venv\Scripts\python.exe -m pip install -r backend\requirements\dev.txt
 
+# 1. Create virtual environment
+python -m venv backend\venv
+
+# 2. Activate virtual environment
+.\backend\venv\Scripts\Activate.ps1
+
+# 3. Upgrade pip and install development dependencies
+pip install --upgrade pip
+pip install -r backend\requirements\dev.txt
+```
+
+*(Alternatively on Windows Command Prompt: `backend\venv\Scripts\activate.bat`)*
+
+```bash
 # macOS / Linux
-python3.12 -m venv backend/venv
+
+# 1. Create virtual environment
+python -m venv backend/venv
+
+# 2. Activate virtual environment
 source backend/venv/bin/activate
+
+# 3. Upgrade pip and install development dependencies
 pip install --upgrade pip
 pip install -r backend/requirements/dev.txt
 ```

@@ -8,7 +8,7 @@ from enum import Enum
 from typing import Any
 
 from django.conf import settings
-from django.db import IntegrityError, transaction
+from django.db import IntegrityError, close_old_connections, transaction
 from django.utils import timezone as django_timezone
 
 from apps.core.utils.hashing import content_hash, redact_mapping
@@ -112,6 +112,7 @@ class IngestionService:
             return result
 
         result.requested = len(raw_records)
+        close_old_connections()
         for payload in raw_records:
             try:
                 outcome, ids = self._process_payload(

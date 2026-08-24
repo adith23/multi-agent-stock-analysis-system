@@ -3,7 +3,8 @@ from __future__ import annotations
 from django.db import IntegrityError
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view
 from rest_framework import filters, status
 from rest_framework.exceptions import APIException, NotFound, ValidationError
 from rest_framework.generics import GenericAPIView, ListCreateAPIView
@@ -68,6 +69,23 @@ def _analysis(run_id) -> AnalysisRun:
     )
 
 
+@extend_schema_view(
+    post=extend_schema(
+        operation_id="analysis_create",
+        parameters=[
+            OpenApiParameter(
+                name="Idempotency-Key",
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.HEADER,
+                required=True,
+                description="Unique idempotency key (1-128 chars: alphanumeric, dot, underscore, colon, hyphen) to prevent duplicate runs.",
+            ),
+        ],
+    ),
+    get=extend_schema(
+        operation_id="analysis_list",
+    ),
+)
 class AnalysisListCreateView(ListCreateAPIView):
     permission_classes = (IsAuthenticated, HasAnyRole)
     allowed_roles = ANALYSIS_ROLES
@@ -90,7 +108,9 @@ class AnalysisListCreateView(ListCreateAPIView):
             "steps"
         )
 
-    @extend_schema(operation_id="analysis_create")
+    def post(self, request: Request, *args, **kwargs) -> Response:
+        return self.create(request, *args, **kwargs)
+
     def create(self, request: Request, *args, **kwargs) -> Response:
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -274,6 +294,18 @@ class PMReviewView(GenericAPIView):
     decision: str | None = None
     throttle_scope = "pm_review"
 
+    @extend_schema(
+        operation_id="analysis_review_create",
+        parameters=[
+            OpenApiParameter(
+                name="Idempotency-Key",
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.HEADER,
+                required=True,
+                description="Unique idempotency key for review submission.",
+            ),
+        ],
+    )
     def post(self, request: Request, run_id) -> Response:
         run = get_object_or_404(
             AnalysisRun.objects.select_related("ticker", "recommendation"),
