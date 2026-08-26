@@ -1,24 +1,38 @@
+import type { Metadata, Viewport } from "next";
+
+import "@fontsource/ibm-plex-mono/400.css";
+import "@fontsource/ibm-plex-mono/500.css";
+import "@fontsource/ibm-plex-mono/600.css";
+import "@fontsource/ibm-plex-mono/700.css";
+import "@fontsource-variable/inter";
+import "@fontsource-variable/source-serif-4";
+
 import "./globals.css";
-import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Multi-Agent Stock Analysis Dashboard",
-  description: "Institutional decision-support platform with multi-agent consensus, adversarial bull/bear reviews, and active risk validation.",
+  title: {
+    default: "Conclave Terminal",
+    template: "%s | Conclave Terminal",
+  },
+  description:
+    "Institutional decision-support terminal for governed multi-agent stock analysis.",
+  openGraph: {
+    title: "Conclave Terminal",
+    description:
+      "Institutional decision-support terminal for governed multi-agent stock analysis.",
+    type: "website",
+  },
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export const viewport: Viewport = {
+  colorScheme: "dark",
+  themeColor: "#0a0b0d",
+};
+
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className="dark">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
-      </head>
-      <body className="antialiased bg-[#0b0f19] text-[#e2e8f0] min-h-screen">
+    <html lang="en" className="dark" suppressHydrationWarning>
+      <body className="min-h-screen bg-void font-sans text-text-primary antialiased">
         {children}
       </body>
     </html>
