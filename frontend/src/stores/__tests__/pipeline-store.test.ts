@@ -17,9 +17,9 @@ describe("pipeline store", () => {
 
   it("normalizes websocket lifecycle events", () => {
     const store = usePipelineStore.getState();
-    store.updateFromWebSocket({ type: "pipeline.stage_started", stage_id: "risk" });
-    store.updateFromWebSocket({ type: "pipeline.stage_completed", stage_id: "risk" });
-    store.updateFromWebSocket({ type: "pipeline.stage_skipped", stage_id: "compliance" });
+    store.updateFromSSE({ type: "stage_started", stage_id: "risk" });
+    store.updateFromSSE({ type: "stage_completed", stage_id: "risk" });
+    store.updateFromSSE({ type: "stage_skipped", stage_id: "compliance" });
 
     expect(usePipelineStore.getState().stages).toMatchObject({
       risk: "done",
@@ -30,7 +30,7 @@ describe("pipeline store", () => {
   it("marks non-failed stages done when the pipeline completes", () => {
     const store = usePipelineStore.getState();
     store.setStageStatus("technical", "failed");
-    store.updateFromWebSocket({ type: "pipeline.completed" });
+    store.updateFromSSE({ type: "pipeline_completed" });
 
     expect(usePipelineStore.getState().stages.technical).toBe("failed");
     expect(usePipelineStore.getState().stages.macro).toBe("done");

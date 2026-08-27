@@ -76,3 +76,25 @@ export interface AnalysisCreateRequest {
 export interface AnalysisCreateHeaders {
   "Idempotency-Key": string;
 }
+
+export type PipelineSseEventType =
+  | "stage_started"
+  | "stage_completed"
+  | "stage_failed"
+  | "stage_skipped"
+  | "pipeline_completed"
+  | "pipeline_failed";
+
+export interface PipelineStageEventData {
+  stage: string;
+  timestamp: string;
+  duration_ms?: number;
+  error?: string;
+}
+
+export interface PipelineTerminalEventData {
+  run_id: string;
+  timestamp: string;
+  stage?: string;
+  error?: string;
+}

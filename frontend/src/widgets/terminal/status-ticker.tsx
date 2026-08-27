@@ -3,7 +3,8 @@ const STATUS_ITEMS = [
   "AUDIT: append-only event model",
   "DATA ISOLATION: portfolio scoped",
   "RETENTION: 400 days",
-  "MODE: Phase 3–4 UI fixture",
+  "STREAMING: SSE connection monitored",
+  "MODE: API + typed fixtures",
 ] as const;
 
 const tickerText = STATUS_ITEMS.join("   ◆   ");

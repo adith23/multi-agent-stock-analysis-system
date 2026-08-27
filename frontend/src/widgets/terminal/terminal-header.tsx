@@ -7,7 +7,10 @@ import { useClock } from "@/shared/hooks";
 import { cn } from "@/shared/lib";
 import { useAuthStore, useTerminalStore } from "@/stores";
 
-export function TerminalHeader({ onTickerSubmit, isSubmitting = false }: { onTickerSubmit: (ticker: string) => void; isSubmitting?: boolean }) {
+import type { SseConnectionStatus } from "@/shared/api";
+import { SseStatusIndicator } from "./sse-status-indicator";
+
+export function TerminalHeader({ onTickerSubmit, isSubmitting = false, pipelineStreamStatus = "idle", alertStreamStatus = "idle" }: { onTickerSubmit: (ticker: string) => void; isSubmitting?: boolean; pipelineStreamStatus?: SseConnectionStatus; alertStreamStatus?: SseConnectionStatus }) {
   const clock = useClock();
   const role = useTerminalStore((state) => state.role);
   const systemState = useTerminalStore((state) => state.systemState);
@@ -41,6 +44,10 @@ export function TerminalHeader({ onTickerSubmit, isSubmitting = false }: { onTic
             <LogOut className="size-3.5" />
           </button>
         </div>
+
+        <div className="h-7 w-px bg-hairline" aria-hidden="true" />
+
+        <SseStatusIndicator pipeline={pipelineStreamStatus} alerts={alertStreamStatus} />
 
         <div className="h-7 w-px bg-hairline" aria-hidden="true" />
 

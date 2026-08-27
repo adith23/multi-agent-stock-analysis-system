@@ -26,3 +26,9 @@ export const ENDPOINTS = {
   AUTH_LOGOUT: "/auth/logout/",
   AUTH_ME: "/auth/me/",
 } as const;
+
+/** Planned streaming routes. The current Django URL configuration must add these endpoints. */
+export const SSE_ENDPOINTS = {
+  PIPELINE_PROGRESS: (runId: string) => `/analysis/${encodeURIComponent(runId)}/stream/`,
+  ALERTS_STREAM: "/alerts/stream/",
+} as const;

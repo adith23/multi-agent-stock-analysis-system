@@ -18,3 +18,18 @@ export interface Readiness {
   status: string;
   checks: ReadinessChecks;
 }
+
+export interface RegimeChangeEventData {
+  regime: string;
+  previous: string;
+  detected_at: string;
+}
+
+export interface ExitTriggerEventData {
+  ticker: string;
+  trigger: string;
+  price: number;
+  detected_at?: string;
+}
+
+export type AlertSseEventType = "regime_change" | "exit_trigger";

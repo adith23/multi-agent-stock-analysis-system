@@ -34,4 +34,4 @@ export const DESIGN_TOKENS = {
 
 export const APP_NAME = "Conclave Terminal";
 export const DEFAULT_API_BASE_URL = "http://localhost:8000/api/v1";
-export const DEFAULT_WS_URL = "ws://localhost:8000/ws";
+export const DEFAULT_SSE_BASE_URL = DEFAULT_API_BASE_URL;

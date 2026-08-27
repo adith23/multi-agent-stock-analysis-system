@@ -4,6 +4,7 @@ export const AUTH_STORAGE_KEYS = {
   refresh: "conclave_refresh_token",
 } as const;
 
+export const AUTH_TOKEN_CHANGED_EVENT = "conclave:auth-token-changed";
 /** Non-sensitive navigation hint for Next.js Proxy; never an authorization credential. */
 export const SESSION_MARKER_COOKIE = "conclave_session";
 
@@ -28,12 +29,14 @@ export function storeAuthTokens(tokens: StoredAuthTokens): void {
   window.localStorage.setItem(AUTH_STORAGE_KEYS.refresh, tokens.refresh);
   window.localStorage.removeItem(AUTH_STORAGE_KEYS.legacyAccess);
   setSessionMarker();
+  notifyTokenChanged();
 }
 
 export function storeAccessToken(access: string): void {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(AUTH_STORAGE_KEYS.access, access);
   setSessionMarker();
+  notifyTokenChanged();
 }
 
 export function clearAuthTokens(): void {
@@ -42,9 +45,14 @@ export function clearAuthTokens(): void {
   window.localStorage.removeItem(AUTH_STORAGE_KEYS.refresh);
   window.localStorage.removeItem(AUTH_STORAGE_KEYS.legacyAccess);
   document.cookie = `${SESSION_MARKER_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax`;
+  notifyTokenChanged();
 }
 
 function setSessionMarker(): void {
   const secure = window.location.protocol === "https:" ? "; Secure" : "";
   document.cookie = `${SESSION_MARKER_COOKIE}=1; Path=/; Max-Age=604800; SameSite=Lax${secure}`;
+}
+
+function notifyTokenChanged(): void {
+  window.dispatchEvent(new CustomEvent(AUTH_TOKEN_CHANGED_EVENT));
 }

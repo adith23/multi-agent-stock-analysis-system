@@ -14,7 +14,7 @@ export function useAnalysisSynchronization(runId: string | null) {
     const run = query.data;
     if (!run) return;
     if (run.status === PipelineStatus.COMPLETED) {
-      usePipelineStore.getState().updateFromWebSocket({ type: "pipeline.completed" });
+      usePipelineStore.getState().updateFromSSE({ type: "pipeline_completed" });
       useTerminalStore.getState().completeAnalysis();
       return;
     }

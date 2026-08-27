@@ -15,24 +15,23 @@ export const DEFAULT_PIPELINE_STAGE_IDS = [
 export type PipelineStageStatus = "pending" | "running" | "done" | "failed" | "skipped";
 
 /**
- * Frontend-normalized progress events. The backend does not expose a WebSocket
- * consumer yet; its future transport adapter must map the agreed wire format
- * into this stable store boundary.
+ * Frontend-normalized progress events. The SSE transport maps the named wire
+ * events and backend stage identifiers into this stable store boundary.
  */
-export type PipelineWebSocketEvent =
-  | { type: "pipeline.stage_started"; stage_id: string }
-  | { type: "pipeline.stage_completed"; stage_id: string }
-  | { type: "pipeline.stage_failed"; stage_id: string }
-  | { type: "pipeline.stage_skipped"; stage_id: string }
-  | { type: "pipeline.completed" }
-  | { type: "pipeline.failed"; stage_id?: string };
+export type PipelineSSEEvent =
+  | { type: "stage_started"; stage_id: string }
+  | { type: "stage_completed"; stage_id: string }
+  | { type: "stage_failed"; stage_id: string }
+  | { type: "stage_skipped"; stage_id: string }
+  | { type: "pipeline_completed" }
+  | { type: "pipeline_failed"; stage_id?: string };
 
 export interface PipelineState {
   stages: Record<string, PipelineStageStatus>;
   initializeStages: (stageIds: readonly string[]) => void;
   setStageStatus: (stageId: string, status: PipelineStageStatus) => void;
   resetAllStages: () => void;
-  updateFromWebSocket: (event: PipelineWebSocketEvent) => void;
+  updateFromSSE: (event: PipelineSSEEvent) => void;
 }
 
 function createPendingStages(stageIds: readonly string[]): Record<string, PipelineStageStatus> {
@@ -48,9 +47,9 @@ export const usePipelineStore = create<PipelineState>()((set) => ({
     set((state) => ({ stages: { ...state.stages, [stageId]: status } })),
   resetAllStages: () =>
     set((state) => ({ stages: createPendingStages(Object.keys(state.stages)) })),
-  updateFromWebSocket: (event) =>
+  updateFromSSE: (event) =>
     set((state) => {
-      if (event.type === "pipeline.completed") {
+      if (event.type === "pipeline_completed") {
         return {
           stages: Object.fromEntries(
             Object.entries(state.stages).map(([stageId, status]) => [
@@ -65,11 +64,11 @@ export const usePipelineStore = create<PipelineState>()((set) => ({
       if (!stageId) return state;
 
       const statusByEvent = {
-        "pipeline.stage_started": "running",
-        "pipeline.stage_completed": "done",
-        "pipeline.stage_failed": "failed",
-        "pipeline.stage_skipped": "skipped",
-        "pipeline.failed": "failed",
+        stage_started: "running",
+        stage_completed: "done",
+        stage_failed: "failed",
+        stage_skipped: "skipped",
+        pipeline_failed: "failed",
       } as const;
 
       return {
