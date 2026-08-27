@@ -1,0 +1,28 @@
+const runPath = (runId: string) => `/analysis/${encodeURIComponent(runId)}`;
+
+export const ENDPOINTS = {
+  ANALYSIS_LIST: "/analysis/",
+  ANALYSIS_DETAIL: (runId: string) => `${runPath(runId)}/`,
+  ANALYSIS_SPECIALISTS: (runId: string) => `${runPath(runId)}/specialists/`,
+  ANALYSIS_BULL_BEAR: (runId: string) => `${runPath(runId)}/bull-bear/`,
+  ANALYSIS_CONVICTION: (runId: string) => `${runPath(runId)}/conviction/`,
+  ANALYSIS_RISK: (runId: string) => `${runPath(runId)}/risk/`,
+  ANALYSIS_RECOMMENDATION: (runId: string) => `${runPath(runId)}/recommendation/`,
+  ANALYSIS_REVIEW: (runId: string) => `${runPath(runId)}/review/`,
+  ANALYSIS_APPROVE: (runId: string) => `${runPath(runId)}/approve/`,
+  ANALYSIS_REJECT: (runId: string) => `${runPath(runId)}/reject/`,
+  ANALYSIS_DEFER: (runId: string) => `${runPath(runId)}/defer/`,
+  PORTFOLIO: "/portfolio/",
+  PORTFOLIO_RISK: "/portfolio/risk/",
+  SCENARIOS: "/scenarios/",
+  PERFORMANCE: "/performance/",
+  CATALYSTS: "/catalysts/",
+  ALERTS: "/alerts/",
+  HEALTH_LIVE: "/health/live/",
+  HEALTH_READY: "/health/ready/",
+  AUTH_TOKEN: "/auth/token/",
+  AUTH_REFRESH: "/auth/token/refresh/",
+  AUTH_VERIFY: "/auth/token/verify/",
+  AUTH_LOGOUT: "/auth/logout/",
+  AUTH_ME: "/auth/me/",
+} as const;

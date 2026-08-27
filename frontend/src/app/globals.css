@@ -50,6 +50,14 @@ body {
   min-height: 100%;
 }
 
+.terminal-workspace-grid {
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--color-hairline) 38%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--color-hairline) 38%, transparent) 1px, transparent 1px);
+  background-size: 28px 28px;
+  background-position: -1px -1px;
+}
+
 body {
   margin: 0;
   background: var(--color-void);
@@ -120,6 +128,21 @@ button:not(:disabled),
   }
   to {
     transform: translateX(-50%);
+  }
+}
+
+@keyframes stamp-in {
+  0% {
+    opacity: 0;
+    transform: rotate(-14deg) scale(0.7);
+  }
+  60% {
+    opacity: 1;
+    transform: rotate(-7deg) scale(1.08);
+  }
+  100% {
+    opacity: 0.9;
+    transform: rotate(-8deg) scale(1);
   }
 }
 

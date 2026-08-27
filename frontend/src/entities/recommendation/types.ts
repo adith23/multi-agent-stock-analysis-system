@@ -114,3 +114,10 @@ export interface PMReviewRequest {
   rationale: string;
   expected_version: number;
 }
+
+export interface PMReviewResponse {
+  analysis_run_id: string;
+  decision: PMReviewDecision;
+  status: "review_accepted" | "review_replayed";
+  review_version: number;
+}
