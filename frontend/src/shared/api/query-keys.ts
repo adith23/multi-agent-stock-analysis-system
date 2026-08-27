@@ -19,5 +19,5 @@ export const queryKeys = {
     catalysts: (filters: Readonly<Record<string, unknown>> = {}) => ["catalysts", filters] as const,
     alerts: ["alerts"] as const,
   },
-  performance: ["performance"] as const,
+  performance: (symbol?: string) => ["performance", symbol ?? "all"] as const,
 } as const;

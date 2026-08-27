@@ -6,6 +6,7 @@ const TABS: readonly { id: TerminalTab; label: string; shortLabel: string }[] = 
   { id: "specialists", label: "Specialist reports", shortLabel: "Specialist Reports" },
   { id: "adversarial", label: "Adversarial review", shortLabel: "Bull vs. Bear" },
   { id: "risk", label: "Risk and compliance", shortLabel: "Risk + Compliance" },
+  { id: "analytics", label: "Advanced analytics", shortLabel: "Analytics" },
   { id: "audit", label: "Audit trail", shortLabel: "Audit" },
 ];
 

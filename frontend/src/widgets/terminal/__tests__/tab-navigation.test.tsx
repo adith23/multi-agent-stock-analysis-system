@@ -7,7 +7,7 @@ import { useTerminalStore } from "@/stores/terminal-store";
 describe("TabNavigation", () => {
   beforeEach(() => useTerminalStore.getState().resetTerminal());
 
-  it("drives the five terminal views through the terminal store", () => {
+  it("drives the six terminal views through the terminal store", () => {
     render(<TabNavigation />);
     const riskTab = screen.getByRole("tab", { name: "Risk + Compliance" });
 
@@ -15,6 +15,6 @@ describe("TabNavigation", () => {
 
     expect(riskTab).toHaveAttribute("aria-selected", "true");
     expect(useTerminalStore.getState().activeTab).toBe("risk");
-    expect(screen.getAllByRole("tab")).toHaveLength(5);
+    expect(screen.getAllByRole("tab")).toHaveLength(6);
   });
 });

@@ -30,3 +30,12 @@ export interface LoginRequest {
 export interface LogoutRequest {
   refresh: string;
 }
+
+export interface TokenRefreshRequest {
+  refresh: string;
+}
+
+export interface TokenRefreshResponse {
+  access: string;
+  refresh?: string;
+}

@@ -5,6 +5,7 @@ import { BullBearPanel } from "@/features/bull-bear/components/bull-bear-panel";
 import { ICMemoPanel } from "@/features/ic-memo/components/ic-memo-panel";
 import { RiskCompliancePanel } from "@/features/risk-compliance/components/risk-compliance-panel";
 import { SpecialistReportsPanel } from "@/features/specialist-reports/components/specialist-reports-panel";
+import { AnalyticsPanel } from "@/features/visualization/components/analytics-panel";
 import { useTerminalStore } from "@/stores/terminal-store";
 
 import { TabNavigation } from "./tab-navigation";
@@ -28,6 +29,7 @@ export function TerminalBody({ leftSidebar, rightSidebar }: { leftSidebar: React
           {activeTab === "specialists" ? <SpecialistReportsPanel /> : null}
           {activeTab === "adversarial" ? <BullBearPanel /> : null}
           {activeTab === "risk" ? <RiskCompliancePanel /> : null}
+          {activeTab === "analytics" ? <AnalyticsPanel /> : null}
           {activeTab === "audit" ? <AuditTrailPanel /> : null}
         </div>
       </section>

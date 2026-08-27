@@ -2,7 +2,7 @@ import { create } from "zustand";
 
 import { UserRole } from "@/entities/user/types";
 
-export type TerminalTab = "overview" | "specialists" | "adversarial" | "risk" | "audit";
+export type TerminalTab = "overview" | "specialists" | "adversarial" | "risk" | "analytics" | "audit";
 export type ActiveSpecialist = "macro" | "fundamental" | "technical" | "sentiment";
 export type SystemState = "idle" | "running" | "ready";
 
