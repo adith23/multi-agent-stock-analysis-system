@@ -4,7 +4,7 @@
 [![Python](https://img.shields.io/badge/Python-3.12-3776AB.svg?logo=python&logoColor=white)](#prerequisites)
 [![Django](https://img.shields.io/badge/Django-5.1%2B-092E20.svg?logo=django&logoColor=white)](#technology-stack)
 [![LangGraph](https://img.shields.io/badge/LangGraph-0.4%2B-FF4F00.svg)](#multi-agent-research-workflow)
-[![Next.js](https://img.shields.io/badge/Next.js-15%20(React%2019)-black.svg?logo=next.js&logoColor=white)](#frontend-application)
+[![Next.js](<https://img.shields.io/badge/Next.js-15%20(React%2019)-black.svg?logo=next.js&logoColor=white>)](#frontend-application)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16%2B-336791.svg?logo=postgresql&logoColor=white)](#prerequisites)
 [![Celery](https://img.shields.io/badge/Celery-5.4%2B-37814A.svg?logo=celery&logoColor=white)](#technology-stack)
 [![License](https://img.shields.io/badge/License-Proprietary%20%2F%20Research-lightgrey.svg)](#)
@@ -35,14 +35,14 @@ An institutional-grade, AI-assisted equity research and portfolio decision-suppo
 
 The platform strictly enforces the **Separation of Responsibilities** mandated by institutional AI engineering standards (SRS §1.5):
 
-| Role | Component | Key Implementations |
-| :--- | :--- | :--- |
-| **Reasoning & Synthesis** | **LangGraph Agents** | Macro, Fundamental, Technical, Sentiment, Bull vs. Bear Adversarial, Risk, Portfolio Manager, Supervisor. |
-| **Deterministic Calculations** | **Engines** | DCF Valuation, Multiples, DDM, Beneish M-Score, Altman Z-Score, Sloan Accruals, VaR, Kelly/Risk-Parity Sizing, MVO/HRP Optimization. |
-| **Classification & Extraction** | **ML Models** | Lazy-loaded FinBERT (Sentiment), Gaussian HMM (Regime Detection), Attention/Crowding Z-Score Detector. |
-| **Enforcement & Hard Gates** | **Rule Engines** | Binding Risk Budget Limits, Restricted Lists, Regulatory Compliance, Signal Conviction Taxonomy, Time Horizon Framework. |
-| **State & Persistence** | **Django + PostgreSQL** | 11 Bounded Context apps, `PostgresSaver` durable LangGraph checkpointing, immutable audit trails. |
-| **Asynchronous Scheduling** | **Celery + Redis** | Outer pipeline orchestration, parallel specialist chords, 5-min exit monitoring, hourly catalyst checks, daily performance attribution. |
+| Role                            | Component               | Key Implementations                                                                                                                     |
+| :------------------------------ | :---------------------- | :-------------------------------------------------------------------------------------------------------------------------------------- |
+| **Reasoning & Synthesis**       | **LangGraph Agents**    | Macro, Fundamental, Technical, Sentiment, Bull vs. Bear Adversarial, Risk, Portfolio Manager, Supervisor.                               |
+| **Deterministic Calculations**  | **Engines**             | DCF Valuation, Multiples, DDM, Beneish M-Score, Altman Z-Score, Sloan Accruals, VaR, Kelly/Risk-Parity Sizing, MVO/HRP Optimization.    |
+| **Classification & Extraction** | **ML Models**           | Lazy-loaded FinBERT (Sentiment), Gaussian HMM (Regime Detection), Attention/Crowding Z-Score Detector.                                  |
+| **Enforcement & Hard Gates**    | **Rule Engines**        | Binding Risk Budget Limits, Restricted Lists, Regulatory Compliance, Signal Conviction Taxonomy, Time Horizon Framework.                |
+| **State & Persistence**         | **Django + PostgreSQL** | 11 Bounded Context apps, `PostgresSaver` durable LangGraph checkpointing, immutable audit trails.                                       |
+| **Asynchronous Scheduling**     | **Celery + Redis**      | Outer pipeline orchestration, parallel specialist chords, 5-min exit monitoring, hourly catalyst checks, daily performance attribution. |
 
 ---
 
@@ -85,19 +85,21 @@ START ──▶ Parallel Fan-Out ───┼─── [3] Technical Agent ─�
 ## Technology Stack
 
 ### Backend
-* **Language & Framework**: Python 3.12, Django 5.1+, Django REST Framework (DRF).
-* **Agent Framework**: LangGraph 0.4+, LangChain Core, `langgraph-checkpoint-postgres`.
-* **LLM Provider**: Google Gemini (`gemini-2.5-flash`, `gemini-3.1-flash-lite`) via `langchain-google-genai`.
-* **Asynchronous Tasks & Scheduling**: Celery 5.4+, `django-celery-beat`, Redis 7+.
-* **Database & Storage**: PostgreSQL 16+ with binary psycopg3 driver.
-* **Financial Data & Analysis**: `pandas`, `numpy`, `scipy`, `pandas-ta`, `PyPortfolioOpt`, `yfinance`, `finnhub-python`, `fredapi`, `edgartools`.
-* **Machine Learning**: `torch`, `transformers` (ProsusAI/FinBERT), `hmmlearn`, `scikit-learn`.
-* **API Documentation & Utilities**: `drf-spectacular` (OpenAPI 3.0), `django-structlog`, `tenacity`.
+
+- **Language & Framework**: Python 3.12, Django 5.1+, Django REST Framework (DRF).
+- **Agent Framework**: LangGraph 0.4+, LangChain Core, `langgraph-checkpoint-postgres`.
+- **LLM Provider**: Google Gemini (`gemini-2.5-flash`, `gemini-3.1-flash-lite`) via `langchain-google-genai`.
+- **Asynchronous Tasks & Scheduling**: Celery 5.4+, `django-celery-beat`, Redis 7+.
+- **Database & Storage**: PostgreSQL 16+ with binary psycopg3 driver.
+- **Financial Data & Analysis**: `pandas`, `numpy`, `scipy`, `pandas-ta`, `PyPortfolioOpt`, `yfinance`, `finnhub-python`, `fredapi`, `edgartools`.
+- **Machine Learning**: `torch`, `transformers` (ProsusAI/FinBERT), `hmmlearn`, `scikit-learn`.
+- **API Documentation & Utilities**: `drf-spectacular` (OpenAPI 3.0), `django-structlog`, `tenacity`.
 
 ### Frontend
-* **Framework**: Next.js 15 (App Router), React 19, TypeScript.
-* **Styling**: TailwindCSS, CSS Modules, Lucide React Icons.
-* **Package Manager**: `pnpm` / `npm`.
+
+- **Framework**: Next.js 15 (App Router), React 19, TypeScript.
+- **Styling**: TailwindCSS, CSS Modules, Lucide React Icons.
+- **Package Manager**: `pnpm` / `npm`.
 
 ---
 
@@ -167,12 +169,12 @@ multi-agent-stock-analysis-system/
 
 Ensure the following tools are installed on your host machine:
 
-* **Python**: `3.12.x` ([python.org](https://www.python.org/))
-* **Node.js**: `20.x` or newer & `pnpm` (or `npm`) ([nodejs.org](https://nodejs.org/))
-* **PostgreSQL**: `16.x` or newer ([postgresql.org](https://www.postgresql.org/))
-* **Redis**: `7.x` or newer (Native, WSL2 Ubuntu, or Memurai on Windows)
-* **Git**: `2.x+`
-* *(Optional)* **Docker & Docker Compose**: If running via containerized stack.
+- **Python**: `3.12.x` ([python.org](https://www.python.org/))
+- **Node.js**: `20.x` or newer & `pnpm` (or `npm`) ([nodejs.org](https://nodejs.org/))
+- **PostgreSQL**: `16.x` or newer ([postgresql.org](https://www.postgresql.org/))
+- **Redis**: `7.x` or newer (Native, WSL2 Ubuntu, or Memurai on Windows)
+- **Git**: `2.x+`
+- _(Optional)_ **Docker & Docker Compose**: If running via containerized stack.
 
 ---
 
@@ -240,10 +242,11 @@ docker compose -f docker/docker-compose.yml exec backend python manage.py create
 ```
 
 Once running, access:
-* **Frontend Dashboard**: `http://localhost:3000/`
-* **Backend REST API**: `http://localhost:8000/api/v1/`
-* **Swagger API Documentation**: `http://localhost:8000/api/docs/`
-* **Django Admin**: `http://localhost:8000/admin/`
+
+- **Frontend Dashboard**: `http://localhost:3000/`
+- **Backend REST API**: `http://localhost:8000/api/v1/`
+- **Swagger API Documentation**: `http://localhost:8000/api/docs/`
+- **Django Admin**: `http://localhost:8000/admin/`
 
 ---
 
@@ -279,7 +282,7 @@ pip install --upgrade pip
 pip install -r backend\requirements\dev.txt
 ```
 
-*(Alternatively on Windows Command Prompt: `backend\venv\Scripts\activate.bat`)*
+_(Alternatively on Windows Command Prompt: `backend\venv\Scripts\activate.bat`)_
 
 ```bash
 # macOS / Linux
@@ -318,6 +321,7 @@ python manage.py createsuperuser
 Open four separate terminal windows from the repository root:
 
 #### **Terminal 1: Redis Server**
+
 ```bash
 # Windows (WSL2 Ubuntu)
 wsl -d Ubuntu -- sudo service redis-server start
@@ -328,6 +332,7 @@ redis-server
 ```
 
 #### **Terminal 2: Celery Worker**
+
 ```bash
 # Windows (Use --pool=solo on Windows)
 cd backend
@@ -339,6 +344,7 @@ celery -A config worker --loglevel=INFO --concurrency=4
 ```
 
 #### **Terminal 3: Celery Beat (Scheduler)**
+
 ```bash
 # Windows PowerShell
 cd backend
@@ -350,6 +356,7 @@ celery -A config beat --loglevel=INFO --scheduler=django_celery_beat.schedulers:
 ```
 
 #### **Terminal 4: Django REST API Server**
+
 ```bash
 # Windows PowerShell
 cd backend
@@ -361,8 +368,9 @@ python manage.py runserver 127.0.0.1:8000
 ```
 
 Verify backend health by visiting:
-* Readiness Check: `http://127.0.0.1:8000/api/v1/health/ready/` (Verifies DB, Cache, and Celery Broker).
-* Interactive Swagger Docs: `http://127.0.0.1:8000/api/docs/`
+
+- Readiness Check: `http://127.0.0.1:8000/api/v1/health/ready/` (Verifies DB, Cache, and Celery Broker).
+- Interactive Swagger Docs: `http://127.0.0.1:8000/api/docs/`
 
 ---
 
@@ -383,11 +391,12 @@ pnpm dev
 ```
 
 Open `http://localhost:3000` to view the interactive dashboard featuring:
-* Interactive price charts and real-time execution log streams.
-* Specialist Agent breakdown cards (Macro Threat, Fundamental Scores, Technical Cues, Sentiment Gauges).
-* Bull vs. Bear Debate arena, pre-mortem failure mode cards, and catalyst timeline.
-* Risk & Compliance validation matrix.
-* Portfolio Manager decision card with conviction sliders, sizing recommendations, and interactive Human-in-the-Loop **Approve / Reject** controls.
+
+- Interactive price charts and real-time execution log streams.
+- Specialist Agent breakdown cards (Macro Threat, Fundamental Scores, Technical Cues, Sentiment Gauges).
+- Bull vs. Bear Debate arena, pre-mortem failure mode cards, and catalyst timeline.
+- Risk & Compliance validation matrix.
+- Portfolio Manager decision card with conviction sliders, sizing recommendations, and interactive Human-in-the-Loop **Approve / Reject** controls.
 
 ---
 
@@ -408,11 +417,13 @@ python manage.py ingest_data --source yfinance --category ohlcv --params "{\"sym
 ### Step 2: Trigger End-to-End Stock Analysis
 
 #### Via Management Command:
+
 ```bash
 python manage.py run_analysis AAPL --exchange US --username YOUR_SUPERUSER
 ```
 
 #### Via Authenticated REST API:
+
 ```bash
 # 1. Obtain JWT token
 curl -X POST http://127.0.0.1:8000/api/v1/auth/token/ \
@@ -430,17 +441,19 @@ curl -X POST http://127.0.0.1:8000/api/v1/analysis/ \
 ### Step 3: Inspect Progress & Specialist Reports
 
 Poll the run status:
+
 ```bash
 curl -X GET http://127.0.0.1:8000/api/v1/analysis/<RUN_ID>/ \
      -H "Authorization: Bearer <ACCESS_TOKEN>"
 ```
 
 Inspect specialist outputs:
-* **Specialist Reports**: `GET /api/v1/analysis/<RUN_ID>/specialists/`
-* **Bull vs. Bear Memo**: `GET /api/v1/analysis/<RUN_ID>/bull-bear/`
-* **Conviction Matrix**: `GET /api/v1/analysis/<RUN_ID>/conviction/`
-* **Risk & Compliance**: `GET /api/v1/analysis/<RUN_ID>/risk/`
-* **Draft Recommendation**: `GET /api/v1/analysis/<RUN_ID>/recommendation/`
+
+- **Specialist Reports**: `GET /api/v1/analysis/<RUN_ID>/specialists/`
+- **Bull vs. Bear Memo**: `GET /api/v1/analysis/<RUN_ID>/bull-bear/`
+- **Conviction Matrix**: `GET /api/v1/analysis/<RUN_ID>/conviction/`
+- **Risk & Compliance**: `GET /api/v1/analysis/<RUN_ID>/risk/`
+- **Draft Recommendation**: `GET /api/v1/analysis/<RUN_ID>/recommendation/`
 
 ### Step 4: Human-in-the-Loop (HITL) PM Approval
 
@@ -460,24 +473,24 @@ curl -X POST http://127.0.0.1:8000/api/v1/analysis/<RUN_ID>/approve/ \
 
 The system generates OpenAPI 3.0 schemas through `drf-spectacular`:
 
-| Method | Endpoint | Description | Permission |
-| :--- | :--- | :--- | :--- |
-| `GET` | `/api/v1/health/live/` | Process liveness probe | Public |
-| `GET` | `/api/v1/health/ready/` | Dependency readiness probe (DB, Redis, Celery) | Public |
-| `POST` | `/api/v1/auth/token/` | Obtain JWT access and refresh token pair | Public |
-| `POST` | `/api/v1/analysis/` | Dispatch a new multi-agent analysis run | Analyst, PM, Admin |
-| `GET` | `/api/v1/analysis/{id}/` | Get analysis state and pipeline step history | Authenticated |
-| `GET` | `/api/v1/analysis/{id}/specialists/` | View Macro, Fundamental, Technical, Sentiment outputs | Authenticated |
-| `GET` | `/api/v1/analysis/{id}/bull-bear/` | View Adversarial debate memo and pre-mortem | Authenticated |
-| `GET` | `/api/v1/analysis/{id}/conviction/` | View conviction scores and inter-agent matrix | Authenticated |
-| `GET` | `/api/v1/analysis/{id}/risk/` | View risk limits, VaR, and compliance checks | Sensitive Data Role |
-| `GET` | `/api/v1/analysis/{id}/recommendation/` | View draft or finalized PM recommendation | Sensitive Data Role |
-| `POST` | `/api/v1/analysis/{id}/approve/` | Submit PM approval decision (HITL resume) | Portfolio Manager |
-| `POST` | `/api/v1/analysis/{id}/reject/` | Submit PM rejection decision (HITL resume) | Portfolio Manager |
-| `GET` | `/api/v1/portfolio/` | View current portfolio holdings and weights | Sensitive Data Role |
-| `POST` | `/api/v1/scenarios/` | Run custom what-if macroeconomic stress test | Authenticated |
-| `GET` | `/api/v1/catalysts/` | List upcoming catalysts and thesis linkages | Authenticated |
-| `GET` | `/api/v1/alerts/` | List active regime shifts and exit trigger alerts | Authenticated |
+| Method | Endpoint                                | Description                                           | Permission          |
+| :----- | :-------------------------------------- | :---------------------------------------------------- | :------------------ |
+| `GET`  | `/api/v1/health/live/`                  | Process liveness probe                                | Public              |
+| `GET`  | `/api/v1/health/ready/`                 | Dependency readiness probe (DB, Redis, Celery)        | Public              |
+| `POST` | `/api/v1/auth/token/`                   | Obtain JWT access and refresh token pair              | Public              |
+| `POST` | `/api/v1/analysis/`                     | Dispatch a new multi-agent analysis run               | Analyst, PM, Admin  |
+| `GET`  | `/api/v1/analysis/{id}/`                | Get analysis state and pipeline step history          | Authenticated       |
+| `GET`  | `/api/v1/analysis/{id}/specialists/`    | View Macro, Fundamental, Technical, Sentiment outputs | Authenticated       |
+| `GET`  | `/api/v1/analysis/{id}/bull-bear/`      | View Adversarial debate memo and pre-mortem           | Authenticated       |
+| `GET`  | `/api/v1/analysis/{id}/conviction/`     | View conviction scores and inter-agent matrix         | Authenticated       |
+| `GET`  | `/api/v1/analysis/{id}/risk/`           | View risk limits, VaR, and compliance checks          | Sensitive Data Role |
+| `GET`  | `/api/v1/analysis/{id}/recommendation/` | View draft or finalized PM recommendation             | Sensitive Data Role |
+| `POST` | `/api/v1/analysis/{id}/approve/`        | Submit PM approval decision (HITL resume)             | Portfolio Manager   |
+| `POST` | `/api/v1/analysis/{id}/reject/`         | Submit PM rejection decision (HITL resume)            | Portfolio Manager   |
+| `GET`  | `/api/v1/portfolio/`                    | View current portfolio holdings and weights           | Sensitive Data Role |
+| `POST` | `/api/v1/scenarios/`                    | Run custom what-if macroeconomic stress test          | Authenticated       |
+| `GET`  | `/api/v1/catalysts/`                    | List upcoming catalysts and thesis linkages           | Authenticated       |
+| `GET`  | `/api/v1/alerts/`                       | List active regime shifts and exit trigger alerts     | Authenticated       |
 
 ---
 
@@ -508,14 +521,14 @@ locust -f tests/load/locustfile.py --host http://127.0.0.1:8000
 
 ## Governance, Security & Auditability
 
-* **Data Isolation**: Ingestion components only communicate with public data APIs; internal portfolio holdings, private risk limits, and compliance lists are isolated behind RBAC permissions (NFR-015–NFR-017).
-* **Point-in-Time Integrity**: All analysis runs record immutable cutoff timestamps (`available_at <= cutoff`) and configuration hashes, preventing future data leakage during backtests and historical evaluations.
-* **Deterministic Risk Gates**: Hard risk and compliance limits cannot be overridden by LLM reasoning. Violations immediately block trade execution and set allocations to zero.
-* **Immutable Audit Trail**: Every data transformation, prompt version, agent output, and reviewer action is logged with correlation IDs for post-trade attribution and audit compliance.
+- **Data Isolation**: Ingestion components only communicate with public data APIs; internal portfolio holdings, private risk limits, and compliance lists are isolated behind RBAC permissions (NFR-015–NFR-017).
+- **Point-in-Time Integrity**: All analysis runs record immutable cutoff timestamps (`available_at <= cutoff`) and configuration hashes, preventing future data leakage during backtests and historical evaluations.
+- **Deterministic Risk Gates**: Hard risk and compliance limits cannot be overridden by LLM reasoning. Violations immediately block trade execution and set allocations to zero.
+- **Immutable Audit Trail**: Every data transformation, prompt version, agent output, and reviewer action is logged with correlation IDs for post-trade attribution and audit compliance.
 
 ---
 
 ## Contributing & License
 
-* **License**: Internal Research / Proprietary
-* **Specification Traceability**: All features map directly to requirements in [SOFTWARE_REQUIREMENTS_SPECIFICATION.md](SOFTWARE_REQUIREMENTS_SPECIFICATION.md).
+- **License**: Internal Research / Proprietary
+- **Specification Traceability**: All features map directly to requirements in [SOFTWARE_REQUIREMENTS_SPECIFICATION.md](SOFTWARE_REQUIREMENTS_SPECIFICATION.md).

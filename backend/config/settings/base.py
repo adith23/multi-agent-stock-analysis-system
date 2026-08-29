@@ -12,6 +12,7 @@ from pathlib import Path
 
 import environ
 import structlog
+from corsheaders.defaults import default_headers
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 PROJECT_DIR = BASE_DIR.parent
@@ -237,6 +238,10 @@ CORS_ALLOWED_ORIGINS = env.list(
     default=["http://localhost:3000"],
 )
 CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_HEADERS = (
+    *default_headers,
+    "idempotency-key",
+)
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": ("django.contrib.auth.password_validation.UserAttributeSimilarityValidator")},
@@ -256,7 +261,7 @@ ML_MODEL_DIR = env("ML_MODEL_DIR", default=str(PROJECT_DIR / "ml_models"))
 
 GOOGLE_API_KEY = env("GOOGLE_API_KEY", default="")
 LLM_PROVIDER = env("LLM_PROVIDER", default="gemini")
-LLM_DEFAULT_MODEL = env("LLM_DEFAULT_MODEL", default="gemini-2.5-flash")
+LLM_DEFAULT_MODEL = env("LLM_DEFAULT_MODEL", default="gemini-3.1-flash-lite")
 LLM_FALLBACK_MODEL = env("LLM_FALLBACK_MODEL", default="gemini-3.1-flash-lite")
 LLM_TEMPERATURE = env.float("LLM_TEMPERATURE", default=0.3)
 LLM_MAX_RETRIES = env.int("LLM_MAX_RETRIES", default=3)

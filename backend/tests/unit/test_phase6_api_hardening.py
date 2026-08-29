@@ -266,3 +266,17 @@ def test_catalyst_performance_and_alert_read_models(
     assert alerts.status_code == 200
     assert alerts.data["count"] == 1
     assert alerts.data["results"][0]["type"] == "catalyst_delayed"
+
+
+def test_analysis_preflight_allows_idempotency_key(api_client) -> None:
+    response = api_client.options(
+        reverse("api-v1:analysis-list"),
+        HTTP_ORIGIN="http://localhost:3000",
+        HTTP_ACCESS_CONTROL_REQUEST_METHOD="POST",
+        HTTP_ACCESS_CONTROL_REQUEST_HEADERS="authorization,content-type,idempotency-key",
+    )
+
+    assert response.status_code == 200
+    allowed = response.headers.get("Access-Control-Allow-Headers", "").lower()
+    assert "idempotency-key" in allowed
+    assert response.headers.get("Access-Control-Allow-Origin") == "http://localhost:3000"

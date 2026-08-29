@@ -34,8 +34,16 @@ from .quality_service import DataQualityService
 logger = logging.getLogger(__name__)
 
 
+import math
+
 def _json_safe(value: Any) -> Any:
-    if value is None or isinstance(value, str | int | float | bool):
+    if value is None or isinstance(value, str | bool):
+        return value
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        if math.isnan(value) or math.isinf(value):
+            return None
         return value
     if isinstance(value, Decimal):
         return str(value)

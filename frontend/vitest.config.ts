@@ -1,6 +1,6 @@
 import path from "node:path";
 
-import { defineConfig } from "vitest/config";
+import { configDefaults, defineConfig } from "vitest/config";
 
 export default defineConfig({
   resolve: {
@@ -9,6 +9,7 @@ export default defineConfig({
     },
   },
   test: {
+    exclude: [...configDefaults.exclude, "tests/e2e/**"],
     environment: "jsdom",
     setupFiles: ["./src/test/setup.ts"],
     restoreMocks: true,
@@ -28,6 +29,10 @@ export default defineConfig({
         "src/shared/ui/shadcn/**",
         "src/widgets/providers/**",
       ],
+      thresholds: {
+        "src/shared/**": { branches: 80, functions: 80, lines: 80, statements: 80 },
+        "src/stores/**": { branches: 80, functions: 80, lines: 80, statements: 80 },
+      },
     },
   },
 });

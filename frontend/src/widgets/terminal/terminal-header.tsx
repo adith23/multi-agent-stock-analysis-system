@@ -1,3 +1,4 @@
+import type { Ref } from "react";
 import { Hexagon, LogOut, Radio, UserRound } from "lucide-react";
 
 import { USER_ROLE_LABELS } from "@/entities/user";
@@ -10,7 +11,7 @@ import { useAuthStore, useTerminalStore } from "@/stores";
 import type { SseConnectionStatus } from "@/shared/api";
 import { SseStatusIndicator } from "./sse-status-indicator";
 
-export function TerminalHeader({ onTickerSubmit, isSubmitting = false, pipelineStreamStatus = "idle", alertStreamStatus = "idle" }: { onTickerSubmit: (ticker: string) => void; isSubmitting?: boolean; pipelineStreamStatus?: SseConnectionStatus; alertStreamStatus?: SseConnectionStatus }) {
+export function TerminalHeader({ onTickerSubmit, isSubmitting = false, pipelineStreamStatus = "idle", alertStreamStatus = "idle", tickerInputRef }: { onTickerSubmit: (ticker: string) => void; isSubmitting?: boolean; pipelineStreamStatus?: SseConnectionStatus; alertStreamStatus?: SseConnectionStatus; tickerInputRef?: Ref<HTMLInputElement> }) {
   const clock = useClock();
   const role = useTerminalStore((state) => state.role);
   const systemState = useTerminalStore((state) => state.systemState);
@@ -31,7 +32,7 @@ export function TerminalHeader({ onTickerSubmit, isSubmitting = false, pipelineS
         </div>
       </div>
 
-      <TickerSearchBar onSubmit={onTickerSubmit} isSubmitting={isSubmitting} />
+      <TickerSearchBar inputRef={tickerInputRef} onSubmit={onTickerSubmit} isSubmitting={isSubmitting} />
 
       <div className="ml-auto flex items-center gap-4">
         <div className="flex items-center gap-2" aria-label="Authenticated identity">

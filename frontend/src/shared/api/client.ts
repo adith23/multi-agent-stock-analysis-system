@@ -1,6 +1,6 @@
 import axios, { AxiosError, type InternalAxiosRequestConfig } from "axios";
 
-import { DEFAULT_API_BASE_URL } from "@/shared/lib/constants";
+import { publicEnvironment } from "@/shared/config/public-env";
 
 import { normalizeApiError } from "./api-error";
 import { clearAuthTokens, getAccessToken, getRefreshToken, storeAccessToken, storeAuthTokens } from "./auth-token";
@@ -16,7 +16,7 @@ const MAX_TRANSPORT_RETRIES = 2;
 let refreshPromise: Promise<string> | null = null;
 
 export const apiClient = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_BASE_URL || DEFAULT_API_BASE_URL,
+  baseURL: publicEnvironment.apiBaseUrl,
   timeout: 30_000,
   headers: { "Content-Type": "application/json", Accept: "application/json" },
 });

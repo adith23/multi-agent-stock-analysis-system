@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from "next";
 
 import "@fontsource/ibm-plex-mono/400.css";
 import "@fontsource/ibm-plex-mono/500.css";
-import "@fontsource/ibm-plex-mono/600.css";
 import "@fontsource/ibm-plex-mono/700.css";
 import "@fontsource-variable/inter";
 import "@fontsource-variable/source-serif-4";
@@ -16,6 +15,9 @@ export const metadata: Metadata = {
   },
   description:
     "Institutional decision-support terminal for governed multi-agent stock analysis.",
+  applicationName: "Conclave Terminal",
+  manifest: "/manifest.webmanifest",
+  robots: { index: false, follow: false },
   openGraph: {
     title: "Conclave Terminal",
     description:

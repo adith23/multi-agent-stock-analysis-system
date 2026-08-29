@@ -25,6 +25,21 @@ describe("API contract infrastructure", () => {
     expect(fieldError).toBeInstanceOf(ApiError);
     expect(fieldError).toMatchObject({ status: 400, message: "This field is required.", retryable: false });
     expect(normalizeApiError(new Error("offline")).message).toBe("offline");
+    const existing = new ApiError({ message: "Already normalized" });
+    expect(normalizeApiError(existing)).toBe(existing);
+    expect(normalizeApiError("unknown")).toMatchObject({ message: "An unexpected error occurred." });
+
+    const serviceError = normalizeApiError({
+      isAxiosError: true,
+      message: "Request failed",
+      response: { status: 503, data: { detail: { reason: ["Upstream unavailable"] }, code: "upstream_down" } },
+    });
+    expect(serviceError).toMatchObject({ status: 503, message: "Upstream unavailable", code: "upstream_down", retryable: true });
+    expect(normalizeApiError({ isAxiosError: true, message: "Network Error" })).toMatchObject({
+      status: null,
+      code: "network_error",
+      retryable: true,
+    });
   });
 
   it("sends backend-required request bodies and idempotency headers", async () => {
@@ -39,6 +54,13 @@ describe("API contract infrastructure", () => {
     const client = createQueryClient();
     expect(client.getDefaultOptions().queries).toMatchObject({ staleTime: 30_000, refetchOnWindowFocus: true, refetchInterval: false });
     expect(client.getDefaultOptions().mutations?.retry).toBe(false);
+    const retry = client.getDefaultOptions().queries?.retry;
+    expect(typeof retry).toBe("function");
+    if (typeof retry === "function") {
+      expect(retry(0, new Error("transient"))).toBe(true);
+      expect(retry(2, new Error("transient"))).toBe(false);
+      expect(retry(0, new ApiError({ message: "transport handled" }))).toBe(false);
+    }
     client.clear();
   });
 });

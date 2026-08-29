@@ -1,7 +1,9 @@
 import "@testing-library/jest-dom/vitest";
 
 import { cleanup } from "@testing-library/react";
-import { afterEach, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, vi } from "vitest";
+
+import { mockApiServer } from "./msw/server";
 
 const replace = vi.fn();
 const refresh = vi.fn();
@@ -19,8 +21,27 @@ class ResizeObserverMock implements ResizeObserver {
 
 vi.stubGlobal("ResizeObserver", ResizeObserverMock);
 
+Object.defineProperty(window, "matchMedia", {
+  writable: true,
+  value: (query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+    addListener: () => undefined,
+    removeListener: () => undefined,
+    dispatchEvent: () => false,
+  }),
+});
+
+beforeAll(() => mockApiServer.listen({ onUnhandledRequest: "error" }));
+
 afterEach(() => {
   cleanup();
+  mockApiServer.resetHandlers();
   window.localStorage.clear();
   vi.clearAllMocks();
 });
+
+afterAll(() => mockApiServer.close());

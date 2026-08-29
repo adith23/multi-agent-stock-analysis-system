@@ -41,7 +41,7 @@ class MarketDataRepository:
         )
         counts: dict[str, int] = {}
         result = []
-        for row in rows.iterator():
+        for row in rows:
             series_id = str(row["series_id"])
             counts[series_id] = counts.get(series_id, 0) + 1
             if counts[series_id] <= per_series_limit:

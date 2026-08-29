@@ -13,7 +13,10 @@ class PatternEngine(DeterministicEngine):
 
     def compute(self, inputs: dict[str, Any]) -> dict[str, Any]:
         self.require(inputs, "ohlcv")
-        frame = pd.DataFrame(inputs["ohlcv"])
+        frame = pd.DataFrame(inputs["ohlcv"]).copy()
+        for col in ("open", "high", "low", "close", "volume"):
+            if col in frame.columns:
+                frame[col] = pd.to_numeric(frame[col], errors="coerce")
         lookback = int(inputs.get("lookback", 20))
         if len(frame) <= lookback:
             raise InsufficientDataError(f"patterns require more than {lookback} bars")

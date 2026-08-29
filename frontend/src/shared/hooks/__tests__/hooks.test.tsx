@@ -22,6 +22,25 @@ describe("shared hooks", () => {
     expect(window.localStorage.getItem("terminal-preference")).toBeNull();
   });
 
+  it("supports lazy defaults, functional updates, malformed storage, and cross-tab changes", () => {
+    window.localStorage.setItem("terminal-density", "invalid-json");
+    const { result } = renderHook(() => useLocalStorage("terminal-density", () => 1));
+    expect(result.current[0]).toBe(1);
+
+    act(() => result.current[1]((current) => current + 1));
+    expect(result.current[0]).toBe(2);
+
+    act(() => {
+      window.localStorage.setItem("terminal-density", "3");
+      window.dispatchEvent(new StorageEvent("storage", {
+        key: "terminal-density",
+        newValue: "3",
+        storageArea: window.localStorage,
+      }));
+    });
+    expect(result.current[0]).toBe(3);
+  });
+
   it("runs matching keyboard shortcuts outside editable controls", () => {
     const callback = vi.fn();
     renderHook(() => useKeyboardShortcut("k", callback, { ctrl: true }));

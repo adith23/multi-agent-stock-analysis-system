@@ -1,11 +1,10 @@
-import { DEFAULT_API_BASE_URL, DEFAULT_SSE_BASE_URL } from "@/shared/lib/constants";
+import { publicEnvironment } from "@/shared/config/public-env";
 
 export type SseConnectionStatus = "idle" | "connecting" | "open" | "reconnecting" | "closed" | "error";
 
 export function buildAuthenticatedSseUrl(path: string, accessToken: string, lastEventId?: string | null): string {
-  const configuredBase = process.env.NEXT_PUBLIC_SSE_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL || DEFAULT_SSE_BASE_URL;
-  const base = configuredBase || DEFAULT_API_BASE_URL;
-  const url = new URL(`${base.replace(/\/$/, "")}/${path.replace(/^\//, "")}`);
+  const configuredBase = publicEnvironment.sseBaseUrl;
+  const url = new URL(`${configuredBase}/${path.replace(/^\//, "")}`);
   url.searchParams.set("token", accessToken);
   if (lastEventId) url.searchParams.set("last_event_id", lastEventId);
   return url.toString();

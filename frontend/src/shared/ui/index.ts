@@ -1,6 +1,7 @@
 export * from "./action-button";
 export * from "./chip";
 export * from "./data-state";
+export * from "./feature-error-boundary";
 export * from "./meter";
 export * from "./panel";
 export * from "./section-label";
