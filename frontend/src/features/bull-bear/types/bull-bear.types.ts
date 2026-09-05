@@ -1,0 +1,1 @@
+export interface BullBearMemoView { bullArguments: readonly string[]; bearArguments: readonly string[]; weakAssumptions: readonly string[]; preMortem: readonly string[]; materialUnknowns: readonly string[]; roundsCompleted: number; }

@@ -121,3 +121,13 @@ logs/
 Thumbs.db
 desktop.ini
 $RECYCLE.BIN/
+
+# ------------------------------------------------------------------------------
+# 11. Local Documentation & Architecture / Implementation Plans
+# ------------------------------------------------------------------------------
+backend/docs/
+adr_data_ingestion_architecture.md
+frontend_implementation_plan.md
+frontend_plan_audit.md
+implementation_plan.md
+SOFTWARE_REQUIREMENTS_SPECIFICATION.md

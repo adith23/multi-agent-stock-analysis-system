@@ -8,7 +8,7 @@ from enum import Enum
 from typing import Any
 
 from django.conf import settings
-from django.db import IntegrityError, transaction
+from django.db import IntegrityError, close_old_connections, transaction
 from django.utils import timezone as django_timezone
 
 from apps.core.utils.hashing import content_hash, redact_mapping
@@ -34,8 +34,16 @@ from .quality_service import DataQualityService
 logger = logging.getLogger(__name__)
 
 
+import math
+
 def _json_safe(value: Any) -> Any:
-    if value is None or isinstance(value, str | int | float | bool):
+    if value is None or isinstance(value, str | bool):
+        return value
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        if math.isnan(value) or math.isinf(value):
+            return None
         return value
     if isinstance(value, Decimal):
         return str(value)
@@ -112,6 +120,7 @@ class IngestionService:
             return result
 
         result.requested = len(raw_records)
+        close_old_connections()
         for payload in raw_records:
             try:
                 outcome, ids = self._process_payload(

@@ -55,6 +55,7 @@ playwright-report/
 blob-report/
 test-results/
 .vitest/
+.lighthouseci/
 
 # ------------------------------------------------------------------------------
 # 6. Monorepo, Bundler & Deployment Caches
