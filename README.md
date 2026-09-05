@@ -264,7 +264,25 @@ CREATE DATABASE stockanalysis OWNER stockanalysis;
 \q
 ```
 
-### 2. Python Virtual Environment Setup
+### 2. Bootstrap Database & LangGraph Infrastructure
+
+```bash
+# Windows PowerShell
+cd backend
+.\venv\Scripts\python.exe manage.py check
+.\venv\Scripts\python.exe manage.py bootstrap_infrastructure
+.\venv\Scripts\python.exe manage.py bootstrap_data_sources
+.\venv\Scripts\python.exe manage.py createsuperuser
+
+# macOS / Linux
+cd backend
+python manage.py check
+python manage.py bootstrap_infrastructure
+python manage.py bootstrap_data_sources
+python manage.py createsuperuser
+```
+
+### 3. Python Virtual Environment Setup
 
 From the repository root:
 
@@ -296,24 +314,6 @@ source backend/venv/bin/activate
 # 3. Upgrade pip and install development dependencies
 pip install --upgrade pip
 pip install -r backend/requirements/dev.txt
-```
-
-### 3. Bootstrap Database & LangGraph Infrastructure
-
-```bash
-# Windows PowerShell
-cd backend
-.\venv\Scripts\python.exe manage.py check
-.\venv\Scripts\python.exe manage.py bootstrap_infrastructure
-.\venv\Scripts\python.exe manage.py bootstrap_data_sources
-.\venv\Scripts\python.exe manage.py createsuperuser
-
-# macOS / Linux
-cd backend
-python manage.py check
-python manage.py bootstrap_infrastructure
-python manage.py bootstrap_data_sources
-python manage.py createsuperuser
 ```
 
 ### 4. Running the Backend (4 Terminals)

@@ -2,6 +2,7 @@ from django.urls import include, path
 
 from .views import (
     AlertListView,
+    AlertStreamView,
     AnalysisDetailView,
     AnalysisListCreateView,
     APIRootView,
@@ -10,6 +11,7 @@ from .views import (
     ConvictionView,
     LivenessView,
     PerformanceView,
+    PipelineStreamView,
     PMReviewView,
     PortfolioRiskView,
     PortfolioStateView,
@@ -33,8 +35,10 @@ urlpatterns = [
     path("performance/", PerformanceView.as_view(), name="performance"),
     path("catalysts/", CatalystListView.as_view(), name="catalyst-list"),
     path("alerts/", AlertListView.as_view(), name="alert-list"),
+    path("alerts/stream/", AlertStreamView.as_view(), name="alerts-stream"),
     path("analysis/", AnalysisListCreateView.as_view(), name="analysis-list"),
     path("analysis/<uuid:run_id>/", AnalysisDetailView.as_view(), name="analysis-detail"),
+    path("analysis/<uuid:run_id>/stream/", PipelineStreamView.as_view(), name="analysis-stream"),
     path(
         "analysis/<uuid:run_id>/specialists/",
         SpecialistReportsView.as_view(),

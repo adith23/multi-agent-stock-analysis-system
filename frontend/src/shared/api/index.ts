@@ -5,3 +5,4 @@ export * from "./endpoints";
 export * from "./query-client";
 export * from "./query-keys";
 export * from "./sse";
+export * from "./fetch-event-source";

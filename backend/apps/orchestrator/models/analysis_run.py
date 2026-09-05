@@ -172,6 +172,38 @@ class AnalysisRun(TimeStampedModel):
                     "updated_at",
                 )
             )
+        try:
+            from apps.core.events import EventBus
+
+            if target is PipelineStatus.COMPLETED:
+                EventBus.publish_pipeline_event(
+                    str(self.id),
+                    "pipeline_completed",
+                    {"run_id": str(self.id), "timestamp": now.isoformat()},
+                )
+            elif target is PipelineStatus.FAILED:
+                EventBus.publish_pipeline_event(
+                    str(self.id),
+                    "pipeline_failed",
+                    {
+                        "run_id": str(self.id),
+                        "stage": str(self.current_stage),
+                        "error": self.error_message,
+                        "timestamp": now.isoformat(),
+                    },
+                )
+            else:
+                EventBus.publish_pipeline_event(
+                    str(self.id),
+                    "stage_started",
+                    {
+                        "stage": target.value,
+                        "run_id": str(self.id),
+                        "timestamp": now.isoformat(),
+                    },
+                )
+        except Exception:
+            pass
 
     def fail(self, message: str) -> None:
         if self.status not in {
@@ -183,7 +215,8 @@ class AnalysisRun(TimeStampedModel):
             self.status = PipelineStatus.FAILED
             self.current_stage = PipelineStatus.FAILED
             self.error_message = message[:4000]
-            self.completed_at = timezone.now()
+            now = timezone.now()
+            self.completed_at = now
             self.save(
                 update_fields=(
                     "status",
@@ -193,3 +226,18 @@ class AnalysisRun(TimeStampedModel):
                     "updated_at",
                 )
             )
+            try:
+                from apps.core.events import EventBus
+
+                EventBus.publish_pipeline_event(
+                    str(self.id),
+                    "pipeline_failed",
+                    {
+                        "run_id": str(self.id),
+                        "stage": "failed",
+                        "error": message,
+                        "timestamp": now.isoformat(),
+                    },
+                )
+            except Exception:
+                pass

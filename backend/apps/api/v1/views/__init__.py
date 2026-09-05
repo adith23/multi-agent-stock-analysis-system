@@ -16,11 +16,13 @@ from .portfolio_views import (
     PortfolioStateView,
     ScenarioCreateView,
 )
+from .stream_views import AlertStreamView, PipelineStreamView
 from .system_views import APIRootView, LivenessView, ReadinessView
 
 __all__ = [
     "APIRootView",
     "AlertListView",
+    "AlertStreamView",
     "AnalysisDetailView",
     "AnalysisListCreateView",
     "BullBearMemoView",
@@ -29,6 +31,7 @@ __all__ = [
     "LivenessView",
     "PMReviewView",
     "PerformanceView",
+    "PipelineStreamView",
     "PortfolioRiskView",
     "PortfolioStateView",
     "ReadinessView",

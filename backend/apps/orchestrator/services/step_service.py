@@ -33,7 +33,23 @@ class PipelineStepService:
                 "duration_ms": 0,
             },
         )
-        return {"skipped": True, "reason": reason}
+        result = {"skipped": True, "reason": reason}
+        try:
+            from apps.core.events import EventBus
+
+            EventBus.publish_pipeline_event(
+                str(run.id),
+                "stage_skipped",
+                {
+                    "stage": name,
+                    "sequence": sequence,
+                    "reason": reason,
+                    "timestamp": now.isoformat(),
+                },
+            )
+        except Exception:
+            pass
+        return result
 
     @contextmanager
     def track(
@@ -46,6 +62,7 @@ class PipelineStepService:
         input_snapshot: dict[str, Any] | None = None,
         task_id: str = "",
     ):
+        now = timezone.now()
         step, _ = PipelineStepResult.objects.update_or_create(
             analysis_run=run,
             step_name=name,
@@ -55,10 +72,21 @@ class PipelineStepService:
                 "status": StepStatus.RUNNING,
                 "input_snapshot": input_snapshot or {},
                 "task_id": task_id,
-                "started_at": timezone.now(),
+                "started_at": now,
                 "error_message": "",
             },
         )
+        try:
+            from apps.core.events import EventBus
+
+            EventBus.publish_pipeline_event(
+                str(run.id),
+                "stage_started",
+                {"stage": name, "sequence": sequence, "timestamp": now.isoformat()},
+            )
+        except Exception:
+            pass
+
         started = time.monotonic()
         output: dict[str, Any] = {}
         try:
@@ -66,10 +94,40 @@ class PipelineStepService:
         except Exception as exc:
             step.status = StepStatus.FAILED
             step.error_message = str(exc)[:4000]
+            try:
+                from apps.core.events import EventBus
+
+                EventBus.publish_pipeline_event(
+                    str(run.id),
+                    "stage_failed",
+                    {
+                        "stage": name,
+                        "sequence": sequence,
+                        "error": str(exc),
+                        "timestamp": timezone.now().isoformat(),
+                    },
+                )
+            except Exception:
+                pass
             raise
         else:
             step.status = StepStatus.COMPLETED
             step.output_snapshot = output
+            try:
+                from apps.core.events import EventBus
+
+                EventBus.publish_pipeline_event(
+                    str(run.id),
+                    "stage_completed",
+                    {
+                        "stage": name,
+                        "sequence": sequence,
+                        "output": output,
+                        "timestamp": timezone.now().isoformat(),
+                    },
+                )
+            except Exception:
+                pass
         finally:
             step.completed_at = timezone.now()
             step.duration_ms = max(0, round((time.monotonic() - started) * 1000))
