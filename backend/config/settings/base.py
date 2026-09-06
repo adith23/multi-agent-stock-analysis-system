@@ -295,23 +295,39 @@ DJANGO_STRUCTLOG_CELERY_ENABLED = True
 DJANGO_STRUCTLOG_IP_LOGGING_ENABLED = False
 
 LOG_LEVEL = env("LOG_LEVEL", default="INFO")
+
+if DEBUG:
+    # Human-friendly, colored, aligned terminal output for development
+    log_formatter_processor = structlog.dev.ConsoleRenderer(colors=True, pad_event=30)
+    log_time_stamper = structlog.processors.TimeStamper(fmt="%Y-%m-%d %H:%M:%S", utc=False)
+    try:
+        import rich.traceback
+
+        rich.traceback.install(show_locals=False)
+    except ImportError:
+        pass
+else:
+    # Machine-parseable JSON for production log aggregators
+    log_formatter_processor = structlog.processors.JSONRenderer()
+    log_time_stamper = structlog.processors.TimeStamper(fmt="iso", utc=True)
+
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
     "formatters": {
-        "json": {
+        "structured": {
             "()": "structlog.stdlib.ProcessorFormatter",
-            "processor": structlog.processors.JSONRenderer(),
+            "processor": log_formatter_processor,
             "foreign_pre_chain": [
                 structlog.stdlib.add_log_level,
-                structlog.processors.TimeStamper(fmt="iso", utc=True),
+                log_time_stamper,
             ],
         }
     },
     "handlers": {
         "console": {
             "class": "logging.StreamHandler",
-            "formatter": "json",
+            "formatter": "structured",
         }
     },
     "root": {"handlers": ["console"], "level": LOG_LEVEL},
@@ -323,7 +339,7 @@ structlog.configure(
         structlog.stdlib.filter_by_level,
         structlog.stdlib.add_logger_name,
         structlog.stdlib.add_log_level,
-        structlog.processors.TimeStamper(fmt="iso", utc=True),
+        log_time_stamper,
         structlog.processors.StackInfoRenderer(),
         structlog.processors.format_exc_info,
         structlog.stdlib.ProcessorFormatter.wrap_for_formatter,
