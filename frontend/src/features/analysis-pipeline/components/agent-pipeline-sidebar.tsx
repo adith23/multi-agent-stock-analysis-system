@@ -41,10 +41,10 @@ function PipelineStageButton({ stage }: { stage: PipelineStageDefinition }) {
       <PipelineStageIndicator status={status} stageName={stage.name} />
       <Icon className={cn("size-3.5 shrink-0", isActive ? "text-amber" : "text-text-faint group-hover:text-text-dim")} strokeWidth={1.6} aria-hidden="true" />
       <span className="min-w-0 flex-1">
-        <span className={cn("block truncate font-mono text-[10px]", isActive ? "text-text-primary" : "text-text-dim")}>{stage.name}</span>
+        <span className={cn("block truncate font-mono text-[10px]", isActive ? "text-text-primary" : "text-text-dim")} style={{ fontFamily: "var(--font-mono)" }}>{stage.name}</span>
         <span className="block truncate text-[9px] text-text-faint">{stage.agent}</span>
       </span>
-      <span className="font-mono text-[7px] text-text-faint">{stage.requirement}</span>
+      <span className="font-mono text-[7px] text-text-faint" style={{ fontFamily: "var(--font-mono)" }}>{stage.requirement}</span>
     </button>
   );
 }

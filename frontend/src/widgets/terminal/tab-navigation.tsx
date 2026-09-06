@@ -45,8 +45,9 @@ export function TabNavigation() {
               aria-keyshortcuts={`${index + 1}`}
               id={`terminal-tab-${tab.id}`}
               tabIndex={active ? 0 : -1}
+              style={{ fontFamily: "var(--font-mono)" }}
               className={cn(
-                "relative px-3 font-mono text-[9px] tracking-[0.06em] uppercase outline-none transition-colors hover:text-text-primary focus-visible:bg-amber/5 focus-visible:text-amber",
+                "relative px-3 font-mono text-[6px] font-medium tracking-[0.12em] uppercase outline-none transition-colors hover:text-text-primary focus-visible:bg-amber/5 focus-visible:text-amber",
                 active ? "text-amber after:absolute after:inset-x-2 after:bottom-0 after:h-px after:bg-amber" : "text-text-faint",
               )}
               onClick={() => setActiveTab(tab.id)}

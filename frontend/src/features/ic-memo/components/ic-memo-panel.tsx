@@ -45,7 +45,7 @@ export function ICMemoPanel() {
   return (
     <Panel className="relative max-w-[900px] p-4">
       <div className="mb-4 flex items-start justify-between border-b border-hairline pb-3 pr-28">
-        <div><h2 className="font-serif text-xl font-semibold">Investment Committee Memo</h2><p className="mt-1 font-mono text-[10px] text-text-faint">{memo.ticker} · {memo.company} · CONCLAVE v2.3</p></div>
+        <div><h2 className="font-mono text-lg font-semibold" style={{ fontFamily: "var(--font-mono)" }}>Investment Committee Memo</h2><p className="mt-1 font-mono text-[10px] text-text-faint">{memo.ticker} · {memo.company} · CONCLAVE v2.3</p></div>
         <div className="absolute top-4 right-4 flex flex-col items-end gap-1.5"><DataModeBadge remote={remote} refreshing={recommendation.isFetching} /><span className="font-mono text-[8px] text-parchment">INTERNAL — DECISION SUPPORT ONLY</span></div>
       </div>
       <ActionStamp action={memo.action} conviction={memo.conviction} />

@@ -35,19 +35,6 @@ export function TerminalHeader({ onTickerSubmit, isSubmitting = false, pipelineS
       <TickerSearchBar inputRef={tickerInputRef} onSubmit={onTickerSubmit} isSubmitting={isSubmitting} />
 
       <div className="ml-auto flex items-center gap-4">
-        <div className="flex items-center gap-2" aria-label="Authenticated identity">
-          <UserRound className="size-3.5 text-amber" aria-hidden="true" />
-          <div className="text-right">
-            <p className="font-mono text-[9px] text-text-primary">{user?.username ?? (authStatus === "checking" ? "VERIFYING" : "SESSION")}</p>
-            <p className="font-mono text-[7px] tracking-[0.08em] text-text-faint uppercase">{USER_ROLE_LABELS[role]}</p>
-          </div>
-          <button type="button" onClick={() => logout.mutate()} disabled={logout.isPending} className="grid size-7 place-items-center rounded-terminal border border-hairline text-text-faint transition-colors hover:border-red/50 hover:text-red disabled:opacity-50" aria-label="Sign out">
-            <LogOut className="size-3.5" />
-          </button>
-        </div>
-
-        <div className="h-7 w-px bg-hairline" aria-hidden="true" />
-
         <SseStatusIndicator pipeline={pipelineStreamStatus} alerts={alertStreamStatus} />
 
         <div className="h-7 w-px bg-hairline" aria-hidden="true" />
@@ -62,9 +49,24 @@ export function TerminalHeader({ onTickerSubmit, isSubmitting = false, pipelineS
           </span>
         </div>
 
-        <time className="w-[74px] text-right font-mono text-[11px] tabular-nums text-text-dim" dateTime={clock.toISOString()} suppressHydrationWarning>
+        <div className="h-7 w-px bg-hairline" aria-hidden="true" />
+
+        <time className="font-mono text-[11px] tabular-nums text-text-dim" dateTime={clock.toISOString()} suppressHydrationWarning>
           {clock.toLocaleTimeString("en-GB", { hour12: false })}
         </time>
+
+        <div className="h-7 w-px bg-hairline" aria-hidden="true" />
+
+        <div className="flex items-center gap-2" aria-label="Authenticated identity">
+          <UserRound className="size-3.5 text-amber" aria-hidden="true" />
+          <div className="text-right">
+            <p className="font-mono text-[9px] text-text-primary">{user?.username ?? (authStatus === "checking" ? "VERIFYING" : "SESSION")}</p>
+            <p className="font-mono text-[7px] tracking-[0.08em] text-text-faint uppercase">{USER_ROLE_LABELS[role]}</p>
+          </div>
+          <button type="button" onClick={() => logout.mutate()} disabled={logout.isPending} className="grid size-7 place-items-center rounded-terminal border border-hairline text-text-faint transition-colors hover:border-red/50 hover:text-red disabled:opacity-50" aria-label="Sign out">
+            <LogOut className="size-3.5" />
+          </button>
+        </div>
       </div>
     </header>
   );
