@@ -3,6 +3,7 @@ from typing import Any
 
 import pytest
 
+from apps.core.utils.hashing import content_hash
 from apps.data_ingestion.domain import DataCategory, IngestionStatus, SourceType
 from apps.data_ingestion.models import (
     DataSourceConfiguration,
@@ -10,7 +11,7 @@ from apps.data_ingestion.models import (
     RawInputObject,
 )
 from apps.data_ingestion.services import IngestionService
-from apps.market_data.models import NewsItem, OHLCVBar, Ticker
+from apps.market_data.models import FinancialStatement, NewsItem, OHLCVBar, Ticker
 
 
 class FakeConnector:
@@ -27,7 +28,11 @@ def finnhub_config(db):
         source_type=SourceType.FINNHUB,
         display_name="Finnhub test",
         is_enabled=True,
-        supported_categories=[DataCategory.OHLCV, DataCategory.NEWS],
+        supported_categories=[
+            DataCategory.OHLCV,
+            DataCategory.NEWS,
+            DataCategory.FINANCIAL_STATEMENT,
+        ],
     )
 
 
@@ -147,3 +152,116 @@ def test_raw_payload_is_immutable(finnhub_config) -> None:
 
     with pytest.raises(ValueError, match="immutable"):
         raw.save()
+
+
+@pytest.mark.django_db
+def test_financial_ingestion_projects_each_reporting_period_and_replays_duplicates(
+    finnhub_config,
+) -> None:
+    payload = {
+        "symbol": "INTU",
+        "statement_type": "income",
+        "currency": "USD",
+        "statement": {
+            "2025-07-31": {"Total Revenue": 18_800, "Net Income": 3_900},
+            "2024-07-31": {"Total Revenue": 16_300, "Net Income": 3_000},
+        },
+    }
+    service = IngestionService()
+
+    first = service.ingest(
+        finnhub_config,
+        DataCategory.FINANCIAL_STATEMENT,
+        connector=FakeConnector([payload]),
+        symbol="INTU",
+    )
+
+    assert first.accepted == 1
+    assert first.failed == 0
+    assert FinancialStatement.objects.filter(ticker__symbol="INTU").count() == 2
+    latest = FinancialStatement.objects.get(
+        ticker__symbol="INTU",
+        statement_type="income",
+        period_end="2025-07-31",
+    )
+    assert latest.values["Total Revenue"] == 18_800
+
+    duplicate = service.ingest(
+        finnhub_config,
+        DataCategory.FINANCIAL_STATEMENT,
+        connector=FakeConnector([payload]),
+        symbol="INTU",
+    )
+
+    assert duplicate.duplicates == 1
+    assert duplicate.failed == 0
+    assert RawInputObject.objects.count() == 1
+    assert FinancialStatement.objects.count() == 2
+
+
+@pytest.mark.django_db
+def test_financial_projection_failure_is_reported_and_rolled_back(finnhub_config) -> None:
+    class FailedProjector:
+        @staticmethod
+        def project(record):
+            return None
+
+    payload = {
+        "symbol": "INTU",
+        "statement_type": "income",
+        "statement": {"2025-07-31": {"Total Revenue": 18_800}},
+    }
+
+    result = IngestionService(projector=FailedProjector()).ingest(
+        finnhub_config,
+        DataCategory.FINANCIAL_STATEMENT,
+        connector=FakeConnector([payload]),
+        symbol="INTU",
+    )
+
+    assert result.accepted == 0
+    assert result.failed == 1
+    assert "not projected" in result.errors[0]
+    assert RawInputObject.objects.count() == 0
+    assert NormalizedDataRecord.objects.count() == 0
+    assert FinancialStatement.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_legacy_financial_payload_is_renormalized_and_backfilled(finnhub_config) -> None:
+    payload = {
+        "symbol": "INTU",
+        "statement": {"2025-07-31": {"Total Revenue": 18_800}},
+    }
+    raw = RawInputObject.objects.create(
+        source_config=finnhub_config,
+        source_type=SourceType.FINNHUB,
+        data_category=DataCategory.FINANCIAL_STATEMENT,
+        entity_identifier="INTU",
+        raw_payload=payload,
+        fetched_at=datetime.now(UTC),
+        content_hash=content_hash(payload),
+        status=IngestionStatus.ACCEPTED,
+    )
+    NormalizedDataRecord.objects.create(
+        raw_input=raw,
+        source_type=SourceType.FINNHUB,
+        data_category=DataCategory.FINANCIAL_STATEMENT,
+        entity_identifier="INTU",
+        normalized_payload=payload,
+        content_hash=content_hash(payload),
+        status=IngestionStatus.ACCEPTED,
+    )
+
+    result = IngestionService().ingest(
+        finnhub_config,
+        DataCategory.FINANCIAL_STATEMENT,
+        connector=FakeConnector([payload]),
+        symbol="INTU",
+    )
+
+    assert result.accepted == 1
+    assert result.failed == 0
+    assert RawInputObject.objects.count() == 1
+    assert NormalizedDataRecord.objects.count() == 2
+    assert FinancialStatement.objects.filter(ticker__symbol="INTU").count() == 1

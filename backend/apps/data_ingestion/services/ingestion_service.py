@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import math
 from collections.abc import Mapping
 from datetime import date, datetime
 from decimal import Decimal
@@ -8,7 +9,7 @@ from enum import Enum
 from typing import Any
 
 from django.conf import settings
-from django.db import IntegrityError, close_old_connections, transaction
+from django.db import close_old_connections, transaction
 from django.utils import timezone as django_timezone
 
 from apps.core.utils.hashing import content_hash, redact_mapping
@@ -17,6 +18,7 @@ from apps.data_ingestion.domain import (
     DataCategory,
     IngestionBatchResult,
     IngestionStatus,
+    NormalizationError,
     NormalizedRecordData,
     SourceType,
 )
@@ -33,8 +35,6 @@ from .quality_service import DataQualityService
 
 logger = logging.getLogger(__name__)
 
-
-import math
 
 def _json_safe(value: Any) -> Any:
     if value is None or isinstance(value, str | bool):
@@ -138,7 +138,13 @@ class IngestionService:
                     "data_record_processing_failed",
                     extra={"source": source, "category": category},
                 )
-        self._mark_source_success(source_config)
+        if result.failed:
+            self._mark_source_failure(
+                source_config,
+                RuntimeError(f"{result.failed} record(s) failed during {category} ingestion"),
+            )
+        else:
+            self._mark_source_success(source_config)
         return result
 
     def _process_payload(
@@ -152,20 +158,24 @@ class IngestionService:
         fingerprint = content_hash(payload)
         entity = str(request_params.get("symbol") or request_params.get("series_id") or "").upper()
         with transaction.atomic():
-            try:
-                raw = RawInputObject.objects.create(
-                    source_config=source_config,
-                    source_type=source,
-                    data_category=category,
-                    external_id=str(payload.get("id") or payload.get("uuid") or ""),
-                    entity_identifier=entity,
-                    raw_payload=payload,
-                    fetched_at=django_timezone.now(),
-                    request_metadata=redact_mapping(dict(_json_safe(request_params))),
-                    content_hash=fingerprint,
-                    status=IngestionStatus.PROCESSING,
-                )
-            except IntegrityError:
+            raw, raw_created = RawInputObject.objects.get_or_create(
+                source_type=source,
+                data_category=category,
+                content_hash=fingerprint,
+                defaults={
+                    "source_config": source_config,
+                    "external_id": str(payload.get("id") or payload.get("uuid") or ""),
+                    "entity_identifier": entity,
+                    "raw_payload": payload,
+                    "fetched_at": django_timezone.now(),
+                    "request_metadata": redact_mapping(dict(_json_safe(request_params))),
+                    "status": IngestionStatus.PROCESSING,
+                },
+            )
+
+            # Existing financial payloads must be replayed so records accepted by
+            # older adapters can be normalized and projected after an upgrade.
+            if not raw_created and category != DataCategory.FINANCIAL_STATEMENT:
                 return "duplicates", []
 
             normalized_values = self.normalization.normalize(
@@ -181,9 +191,14 @@ class IngestionService:
             for normalized in normalized_values:
                 status, record = self._persist_normalized(raw, normalized)
                 if status == IngestionStatus.ACCEPTED:
+                    self._project(record)
                     accepted_count += 1
-                    self.projector.project(record)
                 elif status == IngestionStatus.DUPLICATE:
+                    if (
+                        category == DataCategory.FINANCIAL_STATEMENT
+                        and record.status == IngestionStatus.ACCEPTED
+                    ):
+                        self._project(record)
                     duplicate_count += 1
                 else:
                     rejected_count += 1
@@ -198,8 +213,17 @@ class IngestionService:
             else:
                 raw.status = IngestionStatus.REJECTED
                 outcome = "rejected"
-            raw.save(update_fields=("status", "updated_at"))
+            if raw_created or accepted_count:
+                raw.save(update_fields=("status", "updated_at"))
             return outcome, ids
+
+    def _project(self, record: NormalizedDataRecord) -> object | None:
+        projected = self.projector.project(record)
+        if record.data_category == DataCategory.FINANCIAL_STATEMENT and projected is None:
+            raise NormalizationError(
+                "financial statement was normalized but not projected into the canonical store"
+            )
+        return projected
 
     def _persist_normalized(
         self,

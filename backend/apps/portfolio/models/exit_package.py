@@ -31,6 +31,7 @@ class ExitStrategyPackage(TimeStampedModel, VersionedMixin):
     time_based_review_date = models.DateTimeField()
     current_price = models.DecimalField(max_digits=24, decimal_places=8, null=True, blank=True)
     trigger_type = models.CharField(max_length=60, blank=True)
+    trigger_details = models.JSONField(default=dict)
     triggered_at = models.DateTimeField(null=True, blank=True)
     last_checked_at = models.DateTimeField(null=True, blank=True)
 

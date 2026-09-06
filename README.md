@@ -360,11 +360,11 @@ celery -A config beat --loglevel=INFO --scheduler=django_celery_beat.schedulers:
 ```bash
 # Windows PowerShell
 cd backend
-.\venv\Scripts\python.exe manage.py runserver 127.0.0.1:8000
+.\venv\Scripts\uvicorn.exe config.asgi:application --reload --port 8000
 
 # macOS / Linux
 cd backend
-python manage.py runserver 127.0.0.1:8000
+uvicorn config.asgi:application --reload --port 8000
 ```
 
 Verify backend health by visiting:

@@ -139,6 +139,40 @@ def test_yfinance_connector_converts_history_rows() -> None:
     assert records[0]["close"] == 11
 
 
+def test_yfinance_connector_fetches_all_annual_financial_statements() -> None:
+    def frame(values):
+        result = Mock()
+        result.empty = False
+        result.to_dict.return_value = values
+        return result
+
+    ticker = Mock()
+    ticker.financials = frame({"2025-07-31": {"Total Revenue": 18_800}})
+    ticker.balance_sheet = frame({"2025-07-31": {"Total Assets": 36_900}})
+    ticker.cashflow = frame({"2025-07-31": {"Free Cash Flow": 6_100}})
+
+    records = YFinanceConnector({"retry_attempts": 1}, client=ticker).fetch(
+        DataCategory.FINANCIAL_STATEMENT,
+        symbol="intu",
+    )
+
+    assert [record["statement_type"] for record in records] == [
+        "income",
+        "balance_sheet",
+        "cash_flow",
+    ]
+    assert all(record["symbol"] == "INTU" for record in records)
+
+
+def test_yfinance_connector_rejects_unknown_statement_name() -> None:
+    with pytest.raises(ValueError, match="unsupported statement"):
+        YFinanceConnector({"retry_attempts": 1}, client=Mock()).fetch(
+            DataCategory.FINANCIAL_STATEMENT,
+            symbol="INTU",
+            statement="unknown",
+        )
+
+
 def test_sec_connector_converts_column_oriented_filing_data() -> None:
     filings = Mock()
     latest = Mock()

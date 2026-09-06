@@ -20,6 +20,14 @@ class DataQualityService:
             "close",
             "volume",
         ),
+        DataCategory.FINANCIAL_STATEMENT: (
+            "symbol",
+            "statement_type",
+            "period_end",
+            "fiscal_year",
+            "currency",
+            "values",
+        ),
         DataCategory.FILING: ("symbol", "form"),
         DataCategory.MACRO: ("series_id", "observed_at", "value"),
         DataCategory.NEWS: ("headline", "published_at"),
@@ -28,6 +36,7 @@ class DataQualityService:
     MAX_AGE = {
         DataCategory.QUOTE: timedelta(minutes=30),
         DataCategory.OHLCV: timedelta(days=10),
+        DataCategory.FINANCIAL_STATEMENT: timedelta(days=550),
         DataCategory.NEWS: timedelta(days=30),
         DataCategory.MACRO: timedelta(days=120),
         DataCategory.FILING: timedelta(days=550),
@@ -62,6 +71,15 @@ class DataQualityService:
             )
             if malformed:
                 issues.append("invalid_ohlcv_range")
+        elif category == DataCategory.FINANCIAL_STATEMENT and not missing:
+            malformed = record.payload["statement_type"] not in {
+                "income",
+                "balance_sheet",
+                "cash_flow",
+                "metrics",
+            }
+            if malformed:
+                issues.append("invalid_financial_statement_type")
 
         stale = False
         max_age = self.MAX_AGE.get(category)

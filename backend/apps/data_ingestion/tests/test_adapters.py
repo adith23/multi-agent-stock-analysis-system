@@ -2,8 +2,13 @@ from datetime import UTC, datetime
 
 import pytest
 
-from apps.data_ingestion.adapters import MacroAdapter, NewsAdapter, PriceAdapter
-from apps.data_ingestion.domain import DataCategory, NormalizationError
+from apps.data_ingestion.adapters import (
+    FinancialStatementAdapter,
+    MacroAdapter,
+    NewsAdapter,
+    PriceAdapter,
+)
+from apps.data_ingestion.domain import DataCategory, NormalizationError, NormalizedRecordData
 from apps.data_ingestion.services import DataQualityService
 
 
@@ -78,3 +83,81 @@ def test_quality_service_rejects_invalid_ohlcv_range() -> None:
     assert result.is_acceptable is False
     assert result.flags["malformed"] is True
     assert "invalid_ohlcv_range" in result.issues
+
+
+def test_financial_statement_adapter_expands_yfinance_period_columns() -> None:
+    records = FinancialStatementAdapter().normalize(
+        {
+            "symbol": "INTU",
+            "statement_type": "income",
+            "currency": "USD",
+            "statement": {
+                "2025-07-31 00:00:00": {
+                    "Total Revenue": 18_800,
+                    "Net Income": 3_900,
+                },
+                "2024-07-31 00:00:00": {
+                    "Total Revenue": 16_300,
+                    "Net Income": 3_000,
+                },
+            },
+        },
+        source_type="yfinance",
+        category=DataCategory.FINANCIAL_STATEMENT,
+        entity_identifier="INTU",
+    )
+
+    assert len(records) == 2
+    assert records[0].payload == {
+        "symbol": "INTU",
+        "statement_type": "income",
+        "period_end": "2024-07-31",
+        "fiscal_year": 2024,
+        "fiscal_quarter": None,
+        "currency": "USD",
+        "accession_number": "",
+        "values": {"Total Revenue": 16_300, "Net Income": 3_000},
+    }
+    assert records[1].canonical_key == "financial_statement:INTU:income:2025-07-31"
+
+
+def test_financial_statement_adapter_aggregates_finnhub_annual_metrics() -> None:
+    records = FinancialStatementAdapter().normalize(
+        {
+            "symbol": "INTU",
+            "metric": {"peBasicExclExtraTTM": 30.0},
+            "series": {
+                "annual": {
+                    "revenue": [
+                        {"period": "2025-07-31", "v": 18_800},
+                        {"period": "2024-07-31", "v": 16_300},
+                    ],
+                    "netIncome": [
+                        {"period": "2025-07-31", "v": 3_900},
+                        {"period": "2024-07-31", "v": 3_000},
+                    ],
+                }
+            },
+        },
+        source_type="finnhub",
+        category=DataCategory.FINANCIAL_STATEMENT,
+        entity_identifier="INTU",
+    )
+
+    assert len(records) == 2
+    assert records[1].payload["statement_type"] == "metrics"
+    assert records[1].payload["values"] == {"revenue": 18_800, "netIncome": 3_900}
+
+
+def test_quality_service_rejects_incomplete_financial_statement() -> None:
+    record = NormalizedRecordData(
+        category=DataCategory.FINANCIAL_STATEMENT,
+        source_type="yfinance",
+        entity_identifier="INTU",
+        payload={"symbol": "INTU", "statement_type": "income"},
+    )
+
+    result = DataQualityService().assess(record)
+
+    assert result.is_acceptable is False
+    assert "period_end" in result.issues[0]

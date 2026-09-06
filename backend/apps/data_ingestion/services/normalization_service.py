@@ -4,6 +4,7 @@ from collections.abc import Mapping
 
 from apps.data_ingestion.adapters import (
     FilingAdapter,
+    FinancialStatementAdapter,
     GenericAdapter,
     MacroAdapter,
     NewsAdapter,
@@ -28,7 +29,7 @@ class NormalizationService:
                 DataCategory.OWNERSHIP: OwnershipAdapter(),
                 DataCategory.INSIDER_TRANSACTION: OwnershipAdapter(),
                 DataCategory.COMPANY_PROFILE: GenericAdapter(),
-                DataCategory.FINANCIAL_STATEMENT: GenericAdapter(),
+                DataCategory.FINANCIAL_STATEMENT: FinancialStatementAdapter(),
                 DataCategory.PEER_GROUP: GenericAdapter(),
                 DataCategory.ALTERNATIVE: GenericAdapter(),
             }

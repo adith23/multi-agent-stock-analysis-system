@@ -8,6 +8,22 @@ from .base import BaseConnector
 
 
 class YFinanceConnector(BaseConnector):
+    FINANCIAL_STATEMENTS = {
+        "income": "financials",
+        "balance_sheet": "balance_sheet",
+        "cash_flow": "cashflow",
+    }
+    STATEMENT_ALIASES = {
+        "balance": "balance_sheet",
+        "balance_sheet": "balance_sheet",
+        "balancesheet": "balance_sheet",
+        "cash_flow": "cash_flow",
+        "cashflow": "cash_flow",
+        "financials": "income",
+        "income": "income",
+        "income_statement": "income",
+    }
+
     source_type = SourceType.YFINANCE
     supported_categories = frozenset(
         {
@@ -38,8 +54,12 @@ class YFinanceConnector(BaseConnector):
         if category == DataCategory.NEWS:
             return self.as_records(getattr(ticker, "news", []))
         if category == DataCategory.FINANCIAL_STATEMENT:
-            statement = getattr(ticker, params.get("statement", "financials"))
-            return [{"symbol": symbol, "statement": statement.to_dict()}]
+            return self._financial_statements(
+                ticker,
+                symbol=symbol,
+                requested=params.get("statement"),
+                currency=params.get("currency", "USD"),
+            )
         history = ticker.history(
             start=params.get("start"),
             end=params.get("end"),
@@ -52,4 +72,41 @@ class YFinanceConnector(BaseConnector):
             item = {str(key).lower().replace(" ", "_"): value for key, value in row.items()}
             item.update({"timestamp": timestamp.isoformat(), "symbol": symbol})
             records.append(item)
+        return records
+
+    def _financial_statements(
+        self,
+        ticker,
+        *,
+        symbol: str,
+        requested: Any = None,
+        currency: Any = "USD",
+    ) -> list[dict[str, Any]]:
+        if requested:
+            normalized = str(requested).strip().lower().replace("-", "_").replace(" ", "_")
+            statement_type = self.STATEMENT_ALIASES.get(normalized)
+            if statement_type is None:
+                supported = ", ".join(sorted(self.FINANCIAL_STATEMENTS))
+                raise ValueError(
+                    f"unsupported statement {requested!r}; expected one of: {supported}"
+                )
+            statement_types = (statement_type,)
+        else:
+            statement_types = tuple(self.FINANCIAL_STATEMENTS)
+
+        records = []
+        for statement_type in statement_types:
+            frame = getattr(ticker, self.FINANCIAL_STATEMENTS[statement_type])
+            if frame is None or getattr(frame, "empty", False):
+                continue
+            records.append(
+                {
+                    "symbol": symbol,
+                    "statement_type": statement_type,
+                    "currency": str(currency or "USD").upper(),
+                    "statement": frame.to_dict(),
+                }
+            )
+        if not records:
+            raise ValueError(f"no financial statements returned for {symbol}")
         return records

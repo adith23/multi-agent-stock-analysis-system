@@ -16,6 +16,7 @@ from apps.market_data.models import (
     NewsItem,
     OHLCVBar,
     PeerGroup,
+    StatementType,
     Ticker,
 )
 
@@ -115,14 +116,20 @@ class MarketDataProjector:
         )
         return profile
 
-    def _financial_statement(self, record: NormalizedDataRecord) -> FinancialStatement | None:
+    def _financial_statement(self, record: NormalizedDataRecord) -> FinancialStatement:
         data = record.normalized_payload
         period = parse_date(str(data.get("period_end") or data.get("periodEndDate") or ""))
         if period is None:
-            return None
+            raise ValueError("canonical financial statement requires a valid period_end")
+        statement_type = str(data.get("statement_type") or "")
+        if statement_type not in StatementType.values:
+            raise ValueError(f"invalid canonical financial statement type: {statement_type!r}")
+        values = data.get("values")
+        if not isinstance(values, dict) or not values:
+            raise ValueError("canonical financial statement requires non-empty values")
         statement, _ = FinancialStatement.objects.update_or_create(
             ticker=self._ticker(record),
-            statement_type=data.get("statement_type", "metrics"),
+            statement_type=statement_type,
             period_end=period,
             source_type=record.source_type,
             defaults={
@@ -130,7 +137,7 @@ class MarketDataProjector:
                 "fiscal_quarter": data.get("fiscal_quarter"),
                 "currency": data.get("currency", "USD"),
                 "accession_number": data.get("accession_number", ""),
-                "values": data.get("values", data),
+                "values": values,
                 **self._provenance(record),
             },
         )
