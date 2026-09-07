@@ -19,5 +19,4 @@ RUN chmod +x /usr/local/bin/stockanalysis-entrypoint \
 
 USER app
 ENTRYPOINT ["stockanalysis-entrypoint"]
-CMD ["celery", "-A", "config", "worker", "--loglevel=INFO", "--queues=default,agents,ingestion,orchestrator,computation"]
-
+CMD ["python", "-m", "config.worker"]

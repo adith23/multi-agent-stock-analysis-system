@@ -2,6 +2,7 @@ from django.contrib import admin
 
 from .models import (
     DataPreparationRun,
+    DataSourceCategoryHealth,
     DataSourceConfiguration,
     NormalizedDataRecord,
     RawInputObject,
@@ -12,6 +13,17 @@ from .models import (
 class DataSourceConfigurationAdmin(admin.ModelAdmin):
     list_display = ("display_name", "source_type", "is_enabled", "priority", "last_success_at")
     list_filter = ("is_enabled", "source_type")
+
+
+@admin.register(DataSourceCategoryHealth)
+class DataSourceCategoryHealthAdmin(admin.ModelAdmin):
+    list_display = (
+        "source_config",
+        "data_category",
+        "last_success_at",
+        "last_failure_at",
+    )
+    list_filter = ("data_category", "source_config__source_type")
 
 
 @admin.register(RawInputObject)

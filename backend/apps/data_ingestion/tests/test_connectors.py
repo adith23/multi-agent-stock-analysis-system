@@ -139,6 +139,23 @@ def test_yfinance_connector_converts_history_rows() -> None:
     assert records[0]["close"] == 11
 
 
+def test_yfinance_connector_normalizes_iso_datetime_history_window() -> None:
+    ticker = Mock()
+    ticker.history.return_value = SimpleNamespace(iterrows=lambda: [])
+
+    YFinanceConnector({"retry_attempts": 1}, client=ticker).fetch(
+        DataCategory.OHLCV,
+        symbol="adbe",
+        start="2024-09-07T06:54:07.920067+00:00",
+        end="2026-09-07T06:54:07.920067+00:00",
+        period="2y",
+    )
+
+    assert ticker.history.call_args.kwargs["start"] == "2024-09-07"
+    assert ticker.history.call_args.kwargs["end"] == "2026-09-07"
+    assert "period" not in ticker.history.call_args.kwargs
+
+
 def test_yfinance_connector_fetches_all_annual_financial_statements() -> None:
     def frame(values):
         result = Mock()

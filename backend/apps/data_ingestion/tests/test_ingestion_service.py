@@ -6,12 +6,14 @@ import pytest
 from apps.core.utils.hashing import content_hash
 from apps.data_ingestion.domain import DataCategory, IngestionStatus, SourceType
 from apps.data_ingestion.models import (
+    DataSourceCategoryHealth,
     DataSourceConfiguration,
     NormalizedDataRecord,
     RawInputObject,
 )
 from apps.data_ingestion.services import IngestionService
-from apps.market_data.models import FinancialStatement, NewsItem, OHLCVBar, Ticker
+from apps.data_ingestion.services.source_routing_service import SourceRoutingService
+from apps.market_data.models import FinancialStatement, MacroIndicator, NewsItem, OHLCVBar, Ticker
 
 
 class FakeConnector:
@@ -90,6 +92,49 @@ def test_ingestion_persists_provenance_and_projects_ohlcv(finnhub_config) -> Non
 
 
 @pytest.mark.django_db
+def test_macro_observations_are_persisted_and_projected_in_a_bounded_query_count(
+    django_assert_max_num_queries,
+) -> None:
+    config = DataSourceConfiguration.objects.create(
+        source_type=SourceType.FRED,
+        display_name="FRED test",
+        is_enabled=True,
+        supported_categories=[DataCategory.MACRO],
+    )
+    payloads = [
+        {
+            "series_id": "DGS10",
+            "date": f"2026-07-{day:02d}",
+            "value": str(4 + day / 100),
+            "title": "10-Year Treasury Rate",
+            "frequency": "Daily",
+            "units": "Percent",
+        }
+        for day in range(1, 26)
+    ]
+
+    with django_assert_max_num_queries(25):
+        result = IngestionService().ingest(
+            config,
+            DataCategory.MACRO,
+            connector=FakeConnector(payloads),
+            series_id="DGS10",
+        )
+
+    assert result.requested == 25
+    assert result.accepted == 25
+    assert result.failed == 0
+    assert len(result.record_ids) == 25
+    assert RawInputObject.objects.count() == 25
+    assert NormalizedDataRecord.objects.count() == 25
+    assert MacroIndicator.objects.filter(series_id="DGS10").count() == 25
+    assert all(
+        str(record.raw_input_id) == record.lineage["raw_input_id"]
+        for record in NormalizedDataRecord.objects.all()
+    )
+
+
+@pytest.mark.django_db
 def test_near_duplicate_news_is_retained_but_not_projected_twice(
     finnhub_config,
 ) -> None:
@@ -131,11 +176,50 @@ def test_source_failure_is_isolated_and_observable(finnhub_config) -> None:
         symbol="AAPL",
     )
 
-    finnhub_config.refresh_from_db()
     assert result.failed == 1
     assert result.errors == ["TimeoutError: provider unavailable"]
-    assert finnhub_config.last_failure_at is not None
-    assert "provider unavailable" in finnhub_config.last_error
+    health = DataSourceCategoryHealth.objects.get(
+        source_config=finnhub_config,
+        data_category=DataCategory.OHLCV,
+    )
+    assert health.last_failure_at is not None
+    assert "provider unavailable" in health.last_error
+
+
+@pytest.mark.django_db
+def test_source_failure_cooldown_is_scoped_to_category() -> None:
+    config = DataSourceConfiguration.objects.create(
+        source_type=SourceType.YFINANCE,
+        display_name="Yahoo Finance test",
+        is_enabled=True,
+        supported_categories=[DataCategory.OHLCV, DataCategory.FINANCIAL_STATEMENT],
+    )
+    service = IngestionService()
+    service._mark_source_failure(
+        config,
+        DataCategory.OHLCV,
+        TimeoutError("OHLCV unavailable"),
+    )
+
+    router = SourceRoutingService()
+
+    assert router.candidates(DataCategory.OHLCV) == []
+    assert router.candidates(DataCategory.FINANCIAL_STATEMENT) == [config]
+
+    service._mark_source_success(config, DataCategory.OHLCV)
+
+    assert router.candidates(DataCategory.OHLCV) == [config]
+    ohlcv_health = DataSourceCategoryHealth.objects.get(
+        source_config=config,
+        data_category=DataCategory.OHLCV,
+    )
+    assert ohlcv_health.last_failure_at is not None
+    assert ohlcv_health.last_success_at is not None
+    assert ohlcv_health.last_success_at >= ohlcv_health.last_failure_at
+    assert not DataSourceCategoryHealth.objects.filter(
+        source_config=config,
+        data_category=DataCategory.FINANCIAL_STATEMENT,
+    ).exists()
 
 
 @pytest.mark.django_db

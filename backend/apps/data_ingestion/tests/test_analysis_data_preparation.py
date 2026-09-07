@@ -233,6 +233,37 @@ def test_historical_plan_never_fetches_missing_current_data(user) -> None:
     assert all(not entry["fetch"] for entry in preparation.plan.values())
 
 
+def test_fetch_windows_follow_ohlcv_and_macro_freshness_policy(user, settings) -> None:
+    settings.ANALYSIS_DESIRED_OHLCV_DAYS = 90
+    settings.ANALYSIS_REQUIRED_MACRO_SERIES = ("DGS10", "GDPC1")
+    ticker = Ticker.objects.create(symbol="WINDOW", exchange="US", name="Window Corp")
+    run = AnalysisRun.objects.create(
+        ticker=ticker,
+        initiated_by=user,
+        checkpoint_thread_id="readiness-fetch-windows",
+        data_cutoff_at=timezone.now(),
+    )
+    service = AnalysisDataReadinessService()
+
+    ohlcv = service._parameter_sets(run, DataCategory.OHLCV)[0]
+    macro = {
+        parameters["series_id"]: parameters
+        for parameters in service._parameter_sets(run, DataCategory.MACRO)
+    }
+
+    assert ohlcv["start"] == (run.data_cutoff_at - timedelta(days=90)).isoformat()
+    assert macro["DGS10"] == {
+        "series_id": "DGS10",
+        "start": (run.data_cutoff_at.date() - timedelta(days=10)).isoformat(),
+        "end": run.data_cutoff_at.date().isoformat(),
+    }
+    assert macro["GDPC1"] == {
+        "series_id": "GDPC1",
+        "start": (run.data_cutoff_at.date() - timedelta(days=200)).isoformat(),
+        "end": run.data_cutoff_at.date().isoformat(),
+    }
+
+
 def test_finalization_freezes_knowledge_cutoff_and_auditable_manifest(user) -> None:
     ticker = Ticker.objects.create(
         symbol="SNAP",
@@ -276,6 +307,7 @@ def test_repository_uses_canonical_ticker_identity_for_duplicate_symbols() -> No
             volume=100,
             source_type="test",
             source_timestamp=now,
+            available_at=now,
             data_quality_score=1,
             content_hash=str(close).ljust(64, "0"),
         )
@@ -339,6 +371,42 @@ def test_concurrent_lock_windows_are_stable_across_request_microseconds() -> Non
     )
 
     assert first == second
+
+
+def test_macro_concurrent_reuse_requires_series_to_be_fresh(user) -> None:
+    now = timezone.now()
+    ticker = Ticker.objects.create(symbol="MACRO", exchange="US", name="Macro Corp")
+    run = AnalysisRun.objects.create(
+        ticker=ticker,
+        initiated_by=user,
+        checkpoint_thread_id="macro-reuse-freshness",
+        data_cutoff_at=now,
+    )
+    for index, (series_id, age_days) in enumerate((("DGS10", 11), ("FEDFUNDS", 30))):
+        MacroIndicator.objects.create(
+            series_id=series_id,
+            observed_at=now.date() - timedelta(days=age_days),
+            value=1,
+            source_type=SourceType.FRED,
+            available_at=now,
+            data_quality_score=0.95,
+            content_hash=f"reuse-{index}".ljust(64, "0"),
+        )
+
+    service = AnalysisIngestionService()
+
+    assert not service._can_reuse_concurrent_result(
+        run,
+        DataCategory.MACRO,
+        source=SourceType.FRED,
+        parameters={"series_id": "DGS10"},
+    )
+    assert service._can_reuse_concurrent_result(
+        run,
+        DataCategory.MACRO,
+        source=SourceType.FRED,
+        parameters={"series_id": "FEDFUNDS"},
+    )
 
 
 def test_ingestion_uses_fallback_and_records_provider_attempts(user) -> None:

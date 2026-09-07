@@ -31,7 +31,7 @@ run:
 	cd backend && python manage.py runserver
 
 worker:
-	cd backend && celery -A config worker --loglevel=INFO
+	cd backend && python -m config.worker
 
 beat:
 	cd backend && celery -A config beat --loglevel=INFO --scheduler=django_celery_beat.schedulers:DatabaseScheduler

@@ -41,6 +41,15 @@ class AnalysisDataReadinessService:
         DataCategory.MACRO,
     )
     degradable_categories = (DataCategory.NEWS,)
+    macro_max_age_days = {
+        "GDPC1": 200,
+        "FEDFUNDS": 75,
+        "CPIAUCSL": 75,
+        "UNRATE": 75,
+        "DGS10": 10,
+        "DGS2": 10,
+        "VIXCLS": 10,
+    }
 
     def create_plan(self, run: AnalysisRun) -> DataPreparationRun:
         knowledge_limit = run.data_cutoff_at if run.is_historical else timezone.now()
@@ -114,9 +123,7 @@ class AnalysisDataReadinessService:
         status = (
             DataPreparationStatus.FAILED
             if failures
-            else DataPreparationStatus.DEGRADED
-            if warnings
-            else DataPreparationStatus.READY
+            else DataPreparationStatus.DEGRADED if warnings else DataPreparationStatus.READY
         )
         return {
             "status": status,
@@ -146,8 +153,8 @@ class AnalysisDataReadinessService:
         return handler(run, category, knowledge_limit)
 
     def _inspect_ohlcv(self, run, category, knowledge_limit) -> dict[str, Any]:
-        minimum = int(getattr(settings, "ANALYSIS_MINIMUM_OHLCV_BARS", 200))
-        desired_days = int(getattr(settings, "ANALYSIS_DESIRED_OHLCV_DAYS", 730))
+        minimum = self._minimum_ohlcv_bars()
+        desired_days = self._desired_ohlcv_days()
         base_queryset = OHLCVBar.objects.filter(
             ticker=run.ticker,
             interval="1d",
@@ -164,8 +171,7 @@ class AnalysisDataReadinessService:
             if count < minimum:
                 issues.append(f"requires at least {minimum} daily bars; found {count}")
             latest_is_fresh = bool(
-                latest is not None
-                and run.data_cutoff_at - latest.timestamp <= timedelta(days=4)
+                latest is not None and run.data_cutoff_at - latest.timestamp <= timedelta(days=4)
             )
             if not latest_is_fresh:
                 issues.append("latest daily bar is stale")
@@ -200,10 +206,14 @@ class AnalysisDataReadinessService:
         )
 
     def _inspect_profile(self, run, category, knowledge_limit) -> dict[str, Any]:
-        profile = CompanyProfile.objects.filter(
-            ticker=run.ticker,
-            available_at__lte=knowledge_limit,
-        ).order_by("-available_at").first()
+        profile = (
+            CompanyProfile.objects.filter(
+                ticker=run.ticker,
+                available_at__lte=knowledge_limit,
+            )
+            .order_by("-available_at")
+            .first()
+        )
         issues = []
         if profile is None:
             issues.append("company profile is missing")
@@ -305,21 +315,11 @@ class AnalysisDataReadinessService:
         found = set(queryset.values_list("series_id", flat=True))
         missing = sorted(set(series) - found)
         issues = [f"missing macro series: {', '.join(missing)}"] if missing else []
-        max_age_days = {
-            "GDPC1": 200,
-            "FEDFUNDS": 75,
-            "CPIAUCSL": 75,
-            "UNRATE": 75,
-            "DGS10": 10,
-            "DGS2": 10,
-            "VIXCLS": 10,
-        }
         stale = []
         for series_id in found:
             latest = queryset.filter(series_id=series_id).order_by("-observed_at").first()
             if latest and (
-                run.data_cutoff_at.date() - latest.observed_at
-                > timedelta(days=max_age_days.get(series_id, 90))
+                run.data_cutoff_at.date() - latest.observed_at > self._macro_max_age(series_id)
             ):
                 stale.append(series_id)
         if stale:
@@ -335,6 +335,32 @@ class AnalysisDataReadinessService:
             issues=issues,
             sources=queryset.values_list("source_type", flat=True).distinct(),
             metrics={"series": sorted(found), "minimum_quality": quality},
+        )
+
+    def macro_series_is_fresh(
+        self,
+        run: AnalysisRun,
+        *,
+        series_id: str,
+        source: str,
+        knowledge_limit,
+    ) -> bool:
+        """Check whether one provider series is safe to reuse for this run."""
+        latest = (
+            MacroIndicator.objects.filter(
+                series_id=series_id,
+                source_type=source,
+                observed_at__lte=run.data_cutoff_at.date(),
+                available_at__lte=knowledge_limit,
+            )
+            .order_by("-observed_at")
+            .first()
+        )
+        return bool(
+            latest
+            and run.data_cutoff_at.date() - latest.observed_at <= self._macro_max_age(series_id)
+            and latest.data_quality_score is not None
+            and latest.data_quality_score >= self._minimum_quality()
         )
 
     def _inspect_peers(self, run, category, knowledge_limit) -> dict[str, Any]:
@@ -381,6 +407,18 @@ class AnalysisDataReadinessService:
         return float(getattr(settings, "ANALYSIS_MINIMUM_DATA_QUALITY", 0.6))
 
     @staticmethod
+    def _minimum_ohlcv_bars() -> int:
+        return int(getattr(settings, "ANALYSIS_MINIMUM_OHLCV_BARS", 30))
+
+    @staticmethod
+    def _desired_ohlcv_days() -> int:
+        return int(getattr(settings, "ANALYSIS_DESIRED_OHLCV_DAYS", 60))
+
+    @classmethod
+    def _macro_max_age(cls, series_id: str) -> timedelta:
+        return timedelta(days=cls.macro_max_age_days.get(series_id, 90))
+
+    @staticmethod
     def _macro_series() -> tuple[str, ...]:
         return tuple(getattr(settings, "ANALYSIS_REQUIRED_MACRO_SERIES", DEFAULT_MACRO_SERIES))
 
@@ -400,8 +438,7 @@ class AnalysisDataReadinessService:
         from .source_routing_service import SOURCE_PREFERENCES
 
         preference = {
-            str(source): index
-            for index, source in enumerate(SOURCE_PREFERENCES.get(category, ()))
+            str(source): index for index, source in enumerate(SOURCE_PREFERENCES.get(category, ()))
         }
         sources = set(queryset.values_list("source_type", flat=True).distinct())
         return sorted(
@@ -414,6 +451,9 @@ class AnalysisDataReadinessService:
             return [
                 {
                     "series_id": series_id,
+                    "start": (
+                        run.data_cutoff_at.date() - self._macro_max_age(series_id)
+                    ).isoformat(),
                     "end": run.data_cutoff_at.date().isoformat(),
                 }
                 for series_id in self._macro_series()
@@ -427,8 +467,9 @@ class AnalysisDataReadinessService:
             return [
                 {
                     **common,
-                    "start": (run.data_cutoff_at - timedelta(days=730)).isoformat(),
-                    "period": "2y",
+                    "start": (
+                        run.data_cutoff_at - timedelta(days=self._desired_ohlcv_days())
+                    ).isoformat(),
                     "interval": "1d",
                     "resolution": "D",
                 }

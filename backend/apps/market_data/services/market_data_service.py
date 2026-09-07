@@ -42,6 +42,8 @@ class MarketDataService:
 class MarketDataProjector:
     """Project accepted normalized records into strongly typed read models."""
 
+    BULK_CATEGORIES = frozenset({DataCategory.OHLCV, DataCategory.MACRO})
+
     @transaction.atomic
     def project(self, record: NormalizedDataRecord) -> object | None:
         handlers = {
@@ -55,6 +57,26 @@ class MarketDataProjector:
         }
         handler = handlers.get(record.data_category)
         return handler(record) if handler else None
+
+    @transaction.atomic
+    def project_many(self, records: list[NormalizedDataRecord]) -> list[object]:
+        """Project high-volume observations with one database upsert per model.
+
+        Categories without a set-based projector retain the ordinary per-record
+        behavior.  Ingestion currently calls this method only for categories in
+        ``BULK_CATEGORIES``.
+        """
+        if not records:
+            return []
+        categories = {record.data_category for record in records}
+        if len(categories) != 1:
+            raise ValueError("bulk projection requires records from one category")
+        category = categories.pop()
+        if category == DataCategory.OHLCV:
+            return list(self._ohlcv_many(records))
+        if category == DataCategory.MACRO:
+            return list(self._macro_many(records))
+        return [projected for record in records if (projected := self.project(record)) is not None]
 
     @staticmethod
     def _provenance(record: NormalizedDataRecord) -> dict[str, Any]:
@@ -97,6 +119,52 @@ class MarketDataProjector:
             defaults=values,
         )
         return bar
+
+    def _ohlcv_many(self, records: list[NormalizedDataRecord]) -> list[OHLCVBar]:
+        bars: list[OHLCVBar] = []
+        for record in records:
+            data = record.normalized_payload
+            timestamp = parse_datetime(data["timestamp"])
+            if timestamp is None:
+                raise ValueError("canonical OHLCV record requires a valid timestamp")
+            bars.append(
+                OHLCVBar(
+                    ticker=self._ticker(record),
+                    timestamp=timestamp,
+                    interval=data.get("interval", "1d"),
+                    open=Decimal(str(data["open"])),
+                    high=Decimal(str(data["high"])),
+                    low=Decimal(str(data["low"])),
+                    close=Decimal(str(data["close"])),
+                    adjusted_close=(
+                        Decimal(str(data["adjusted_close"]))
+                        if data.get("adjusted_close") is not None
+                        else None
+                    ),
+                    volume=Decimal(str(data.get("volume", 0))),
+                    **self._provenance(record),
+                )
+            )
+        OHLCVBar.objects.bulk_create(
+            bars,
+            batch_size=500,
+            update_conflicts=True,
+            unique_fields=("ticker", "timestamp", "interval", "source_type"),
+            update_fields=(
+                "open",
+                "high",
+                "low",
+                "close",
+                "adjusted_close",
+                "volume",
+                "source_id",
+                "source_timestamp",
+                "data_quality_score",
+                "content_hash",
+                "updated_at",
+            ),
+        )
+        return bars
 
     def _profile(self, record: NormalizedDataRecord) -> CompanyProfile:
         data = record.normalized_payload
@@ -162,6 +230,43 @@ class MarketDataProjector:
             },
         )
         return indicator
+
+    def _macro_many(self, records: list[NormalizedDataRecord]) -> list[MacroIndicator]:
+        indicators: list[MacroIndicator] = []
+        for record in records:
+            data = record.normalized_payload
+            observed_at = parse_date(data["observed_at"])
+            if observed_at is None:
+                raise ValueError("canonical macro record requires a valid observation date")
+            indicators.append(
+                MacroIndicator(
+                    series_id=data["series_id"],
+                    observed_at=observed_at,
+                    title=data.get("title", ""),
+                    value=data.get("value"),
+                    frequency=data.get("frequency", ""),
+                    unit=data.get("unit", ""),
+                    **self._provenance(record),
+                )
+            )
+        MacroIndicator.objects.bulk_create(
+            indicators,
+            batch_size=500,
+            update_conflicts=True,
+            unique_fields=("series_id", "observed_at", "source_type"),
+            update_fields=(
+                "title",
+                "value",
+                "frequency",
+                "unit",
+                "source_id",
+                "source_timestamp",
+                "data_quality_score",
+                "content_hash",
+                "updated_at",
+            ),
+        )
+        return indicators
 
     def _news(self, record: NormalizedDataRecord) -> NewsItem:
         data = record.normalized_payload

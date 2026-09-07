@@ -23,6 +23,7 @@ from apps.data_ingestion.domain import (
     SourceType,
 )
 from apps.data_ingestion.models import (
+    DataSourceCategoryHealth,
     DataSourceConfiguration,
     NormalizedDataRecord,
     RawInputObject,
@@ -66,6 +67,8 @@ def _json_safe(value: Any) -> Any:
 class IngestionService:
     """Application service for resilient fetch-normalize-assess-persist flow."""
 
+    DEFAULT_BATCH_SIZE = 500
+
     SECRET_SETTING_NAMES = {
         SourceType.FINNHUB: "FINNHUB_API_KEY",
         SourceType.FRED: "FRED_API_KEY",
@@ -82,12 +85,14 @@ class IngestionService:
         deduplication: DeduplicationService | None = None,
         quality: DataQualityService | None = None,
         projector: MarketDataProjector | None = None,
+        batch_size: int = DEFAULT_BATCH_SIZE,
     ) -> None:
         self.registry = registry
         self.normalization = normalization or NormalizationService()
         self.deduplication = deduplication or DeduplicationService()
         self.quality = quality or DataQualityService()
         self.projector = projector or MarketDataProjector()
+        self.batch_size = max(1, batch_size)
 
     def ingest(
         self,
@@ -114,7 +119,7 @@ class IngestionService:
         try:
             raw_records = source_connector.fetch_with_resilience(category, **params)
         except Exception as exc:
-            self._mark_source_failure(source_config, exc)
+            self._mark_source_failure(source_config, category, exc)
             result.failed += 1
             result.errors.append(f"{type(exc).__name__}: {exc}")
             logger.exception(
@@ -125,32 +130,286 @@ class IngestionService:
 
         result.requested = len(raw_records)
         close_old_connections()
-        for payload in raw_records:
-            try:
-                outcome, ids = self._process_payload(
-                    source_config,
-                    category,
-                    _json_safe(payload),
-                    params,
-                    ticker=ticker,
-                )
-                setattr(result, outcome, getattr(result, outcome) + 1)
-                result.record_ids.extend(ids)
-            except Exception as exc:
-                result.failed += 1
-                result.errors.append(f"{type(exc).__name__}: {exc}")
-                logger.exception(
-                    "data_record_processing_failed",
-                    extra={"source": source, "category": category},
-                )
+        uses_bulk_path = category in MarketDataProjector.BULK_CATEGORIES and callable(
+            getattr(self.projector, "project_many", None)
+        )
+        if uses_bulk_path:
+            for offset in range(0, len(raw_records), self.batch_size):
+                payloads = [_json_safe(payload) for payload in raw_records[offset : offset + self.batch_size]]
+                try:
+                    outcomes = self._process_payload_batch(
+                        source_config,
+                        category,
+                        payloads,
+                        params,
+                        ticker=ticker,
+                    )
+                except Exception:
+                    # Preserve record-level failure isolation if a database backend
+                    # cannot perform the bulk upsert or a projector rejects a row.
+                    logger.exception(
+                        "data_batch_processing_failed_falling_back",
+                        extra={"source": source, "category": category, "size": len(payloads)},
+                    )
+                    outcomes = []
+                    for payload in payloads:
+                        try:
+                            outcomes.append(
+                                self._process_payload(
+                                    source_config,
+                                    category,
+                                    payload,
+                                    params,
+                                    ticker=ticker,
+                                )
+                            )
+                        except Exception as exc:
+                            outcomes.append(exc)
+                self._accumulate_outcomes(result, outcomes, source=source, category=category)
+        else:
+            outcomes: list[tuple[str, list[str]] | Exception] = []
+            for payload in raw_records:
+                try:
+                    outcomes.append(
+                        self._process_payload(
+                            source_config,
+                            category,
+                            _json_safe(payload),
+                            params,
+                            ticker=ticker,
+                        )
+                    )
+                except Exception as exc:
+                    outcomes.append(exc)
+            self._accumulate_outcomes(result, outcomes, source=source, category=category)
         if result.failed:
             self._mark_source_failure(
                 source_config,
+                category,
                 RuntimeError(f"{result.failed} record(s) failed during {category} ingestion"),
             )
         else:
-            self._mark_source_success(source_config)
+            self._mark_source_success(source_config, category)
         return result
+
+    @staticmethod
+    def _accumulate_outcomes(
+        result: IngestionBatchResult,
+        outcomes: list[tuple[str, list[str]] | Exception],
+        *,
+        source: str,
+        category: str,
+    ) -> None:
+        for item in outcomes:
+            if isinstance(item, Exception):
+                result.failed += 1
+                result.errors.append(f"{type(item).__name__}: {item}")
+                logger.error(
+                    "data_record_processing_failed",
+                    extra={"source": source, "category": category},
+                    exc_info=(type(item), item, item.__traceback__),
+                )
+                continue
+            outcome, ids = item
+            setattr(result, outcome, getattr(result, outcome) + 1)
+            result.record_ids.extend(ids)
+
+    def _process_payload_batch(
+        self,
+        source_config: DataSourceConfiguration,
+        category: str,
+        payloads: list[dict[str, Any]],
+        request_params: Mapping[str, Any],
+        *,
+        ticker: Ticker | None = None,
+    ) -> list[tuple[str, list[str]] | Exception]:
+        """Normalize and persist one bounded observation batch with set-based writes."""
+        source = source_config.source_type
+        entity = str(
+            ticker.symbol
+            if ticker is not None
+            else request_params.get("symbol") or request_params.get("series_id") or ""
+        ).upper()
+        fingerprints = [content_hash(payload) for payload in payloads]
+        existing_raw_hashes = set(
+            RawInputObject.objects.filter(
+                source_type=source,
+                data_category=category,
+                content_hash__in=fingerprints,
+            ).values_list("content_hash", flat=True)
+        )
+        outcomes: list[tuple[str, list[str]] | Exception | None] = [None] * len(payloads)
+        prepared: list[tuple[int, str, dict[str, Any], list[NormalizedRecordData]]] = []
+        seen_raw_hashes = set(existing_raw_hashes)
+        for index, (payload, fingerprint) in enumerate(zip(payloads, fingerprints, strict=True)):
+            if fingerprint in seen_raw_hashes:
+                outcomes[index] = ("duplicates", [])
+                continue
+            seen_raw_hashes.add(fingerprint)
+            try:
+                values = self.normalization.normalize(
+                    payload,
+                    source_type=source,
+                    category=category,
+                    entity_identifier=entity,
+                )
+                prepared.append((index, fingerprint, payload, values))
+            except Exception as exc:
+                outcomes[index] = exc
+
+        if not prepared:
+            return [item for item in outcomes if item is not None]
+
+        now = django_timezone.now()
+        metadata = redact_mapping(dict(_json_safe(request_params)))
+        raw_candidates = {
+            fingerprint: RawInputObject(
+                source_config=source_config,
+                source_type=source,
+                data_category=category,
+                content_hash=fingerprint,
+                external_id=str(payload.get("id") or payload.get("uuid") or ""),
+                entity_identifier=entity,
+                raw_payload=payload,
+                fetched_at=now,
+                request_metadata=metadata,
+                status=IngestionStatus.PROCESSING,
+            )
+            for _, fingerprint, payload, _ in prepared
+        }
+
+        with transaction.atomic():
+            RawInputObject.objects.bulk_create(
+                list(raw_candidates.values()),
+                batch_size=self.batch_size,
+                ignore_conflicts=True,
+            )
+            persisted_raw = {
+                raw.content_hash: raw
+                for raw in RawInputObject.objects.filter(
+                    source_type=source,
+                    data_category=category,
+                    content_hash__in=raw_candidates,
+                )
+            }
+
+            canonical_ticker = None if category == DataCategory.MACRO else ticker
+            if canonical_ticker is None and entity and category != DataCategory.MACRO:
+                canonical_ticker = MarketDataService.resolve_ticker(entity)
+
+            normalized_entries: list[tuple[int, RawInputObject, NormalizedRecordData, str]] = []
+            for index, raw_hash, _, values in prepared:
+                raw = persisted_raw[raw_hash]
+                # A concurrent worker won the raw-input insert. It owns normalization.
+                if raw.id != raw_candidates[raw_hash].id:
+                    outcomes[index] = ("duplicates", [])
+                    continue
+                for value in values:
+                    payload = _json_safe(value.payload)
+                    normalized_entries.append(
+                        (index, raw, value, self.deduplication.exact_fingerprint(payload))
+                    )
+
+            normalized_hashes = [entry[3] for entry in normalized_entries]
+            existing_records = {
+                record.content_hash: record
+                for record in NormalizedDataRecord.objects.filter(
+                    source_type=source,
+                    data_category=category,
+                    content_hash__in=normalized_hashes,
+                )
+            }
+            new_records: dict[str, NormalizedDataRecord] = {}
+            statuses_by_index: dict[int, list[str]] = {}
+            hashes_by_index: dict[int, list[str]] = {}
+            for index, raw, value, fingerprint in normalized_entries:
+                hashes_by_index.setdefault(index, []).append(fingerprint)
+                if fingerprint in existing_records or fingerprint in new_records:
+                    statuses_by_index.setdefault(index, []).append(str(IngestionStatus.DUPLICATE))
+                    continue
+                normalized_payload = _json_safe(value.payload)
+                assessment = self.quality.assess(value)
+                status = (
+                    IngestionStatus.ACCEPTED
+                    if assessment.is_acceptable
+                    else IngestionStatus.REJECTED
+                )
+                record = NormalizedDataRecord(
+                    raw_input=raw,
+                    ticker=canonical_ticker,
+                    source_type=str(value.source_type),
+                    source_id=value.source_id,
+                    source_timestamp=value.source_timestamp,
+                    data_quality_score=assessment.score,
+                    content_hash=fingerprint,
+                    data_category=str(value.category),
+                    entity_identifier=value.entity_identifier,
+                    canonical_key=value.canonical_key,
+                    normalized_payload=normalized_payload,
+                    schema_version=value.schema_version,
+                    language=value.language,
+                    similarity_hash="",
+                    lineage={
+                        "raw_input_id": str(raw.id),
+                        "source_config_id": str(raw.source_config_id),
+                        "adapter_schema_version": value.schema_version,
+                        "near_duplicate_of": None,
+                    },
+                    quality_issues=list(assessment.issues),
+                    quality_flags=assessment.flags,
+                    status=status,
+                )
+                new_records[fingerprint] = record
+                statuses_by_index.setdefault(index, []).append(str(status))
+
+            NormalizedDataRecord.objects.bulk_create(
+                list(new_records.values()),
+                batch_size=self.batch_size,
+                ignore_conflicts=True,
+            )
+            persisted_records = {
+                record.content_hash: record
+                for record in NormalizedDataRecord.objects.select_related("ticker").filter(
+                    source_type=source,
+                    data_category=category,
+                    content_hash__in=normalized_hashes,
+                )
+            }
+            accepted_records = [
+                persisted_records[fingerprint]
+                for fingerprint, proposed in new_records.items()
+                if persisted_records[fingerprint].id == proposed.id
+                and proposed.status == IngestionStatus.ACCEPTED
+            ]
+            self.projector.project_many(accepted_records)
+
+            raws_to_update: list[RawInputObject] = []
+            for index, raw_hash, _, _ in prepared:
+                if outcomes[index] is not None:
+                    continue
+                statuses = statuses_by_index.get(index, [])
+                ids = [str(persisted_records[item].id) for item in hashes_by_index.get(index, [])]
+                if str(IngestionStatus.ACCEPTED) in statuses:
+                    outcome = "accepted"
+                    raw_status = IngestionStatus.ACCEPTED
+                elif str(IngestionStatus.DUPLICATE) in statuses:
+                    outcome = "duplicates"
+                    raw_status = IngestionStatus.DUPLICATE
+                else:
+                    outcome = "rejected"
+                    raw_status = IngestionStatus.REJECTED
+                raw = persisted_raw[raw_hash]
+                raw.status = raw_status
+                raw.updated_at = now
+                raws_to_update.append(raw)
+                outcomes[index] = (outcome, ids)
+            RawInputObject.objects.bulk_update(
+                raws_to_update,
+                fields=("status", "updated_at"),
+                batch_size=self.batch_size,
+            )
+
+        return [item for item in outcomes if item is not None]
 
     def _process_payload(
         self,
@@ -308,16 +567,33 @@ class IngestionService:
         return values
 
     @staticmethod
-    def _mark_source_success(config: DataSourceConfiguration) -> None:
-        config.last_success_at = django_timezone.now()
+    def _mark_source_success(config: DataSourceConfiguration, category: str) -> None:
+        now = django_timezone.now()
+        DataSourceCategoryHealth.objects.update_or_create(
+            source_config=config,
+            data_category=category,
+            defaults={"last_success_at": now, "last_error": ""},
+        )
+        config.last_success_at = now
         config.last_error = ""
         config.save(update_fields=("last_success_at", "last_error", "updated_at"))
 
     @staticmethod
     def _mark_source_failure(
         config: DataSourceConfiguration,
+        category: str,
         error: Exception,
     ) -> None:
-        config.last_failure_at = django_timezone.now()
-        config.last_error = f"{type(error).__name__}: {error}"[:2000]
+        now = django_timezone.now()
+        message = f"{type(error).__name__}: {error}"[:2000]
+        DataSourceCategoryHealth.objects.update_or_create(
+            source_config=config,
+            data_category=category,
+            defaults={
+                "last_failure_at": now,
+                "last_error": message,
+            },
+        )
+        config.last_failure_at = now
+        config.last_error = message
         config.save(update_fields=("last_failure_at", "last_error", "updated_at"))

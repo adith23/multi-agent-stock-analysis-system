@@ -38,8 +38,11 @@ def test_indicator_engine_computes_complete_dashboard() -> None:
 
 
 def test_indicator_engine_enforces_minimum_data_and_ranges() -> None:
-    with pytest.raises(InsufficientDataError):
-        TechnicalIndicatorEngine().compute({"ohlcv": sample_ohlcv(10)})
+    with pytest.raises(InsufficientDataError, match="at least 30 bars"):
+        TechnicalIndicatorEngine().compute({"ohlcv": sample_ohlcv(29)})
+    assert TechnicalIndicatorEngine().compute({"ohlcv": sample_ohlcv(30)})[
+        "observations"
+    ] == 30
     invalid = sample_ohlcv()
     invalid[-1]["high"] = invalid[-1]["low"] - 1
     with pytest.raises(EngineInputError, match="high"):

@@ -278,8 +278,8 @@ TAVILY_API_KEY = env("TAVILY_API_KEY", default="")
 
 # On-demand analysis data-readiness policy. Provider symbols remain runtime
 # request data and are intentionally not stored in these settings.
-ANALYSIS_MINIMUM_OHLCV_BARS = env.int("ANALYSIS_MINIMUM_OHLCV_BARS", default=200)
-ANALYSIS_DESIRED_OHLCV_DAYS = env.int("ANALYSIS_DESIRED_OHLCV_DAYS", default=730)
+ANALYSIS_MINIMUM_OHLCV_BARS = env.int("ANALYSIS_MINIMUM_OHLCV_BARS", default=30)
+ANALYSIS_DESIRED_OHLCV_DAYS = env.int("ANALYSIS_DESIRED_OHLCV_DAYS", default=60)
 ANALYSIS_PROFILE_MAX_AGE_DAYS = env.int("ANALYSIS_PROFILE_MAX_AGE_DAYS", default=30)
 ANALYSIS_MINIMUM_DATA_QUALITY = env.float("ANALYSIS_MINIMUM_DATA_QUALITY", default=0.6)
 ANALYSIS_REQUIRED_MACRO_SERIES = tuple(

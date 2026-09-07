@@ -12,7 +12,7 @@ from engines.exceptions import EngineInputError
 class TechnicalIndicatorEngine(DeterministicEngine):
     """Compute FR-021 price, momentum, volatility, and volume indicators."""
 
-    MINIMUM_BARS = 35
+    MINIMUM_BARS = 30
 
     def compute(self, inputs: dict[str, Any]) -> dict[str, Any]:
         frame = self._frame(inputs)

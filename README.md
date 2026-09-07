@@ -334,14 +334,22 @@ redis-server
 #### **Terminal 2: Celery Worker**
 
 ```bash
-# Windows (Use --pool=solo on Windows)
+# Windows (uses a thread pool with four concurrent worker slots)
 cd backend
-.\venv\Scripts\celery.exe -A config worker --loglevel=INFO --pool=solo
+.\venv\Scripts\python.exe -m config.worker
 
-# macOS / Linux
+celery -A config worker --loglevel=INFO --pool=threads --concurrency=4 --queues=default,agents,ingestion,orchestrator,computation
+
+# macOS / Linux (uses a prefork pool with four concurrent worker slots)
 cd backend
-celery -A config worker --loglevel=INFO --concurrency=4
+python -m config.worker
 ```
+
+The launcher can be tuned with `--concurrency`, `--pool`, `--queues`, and
+`--loglevel`. It also accepts the corresponding `CELERY_WORKER_CONCURRENCY`,
+`CELERY_WORKER_POOL`, `CELERY_WORKER_QUEUES`, and `CELERY_WORKER_LOGLEVEL`
+environment variables. For example, `python -m config.worker --concurrency=8`
+starts eight execution slots.
 
 #### **Terminal 3: Celery Beat (Scheduler)**
 

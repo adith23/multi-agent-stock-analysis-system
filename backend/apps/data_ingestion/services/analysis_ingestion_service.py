@@ -10,7 +10,6 @@ from django.utils.dateparse import parse_date, parse_datetime
 from apps.core.utils.hashing import content_hash
 from apps.data_ingestion.domain import DataCategory
 from apps.data_ingestion.models import DataPreparationRun, DataPreparationStatus
-from apps.market_data.models import MacroIndicator
 from apps.orchestrator.models import AnalysisRun
 from apps.orchestrator.services.manifest_service import RunManifestService
 
@@ -260,12 +259,12 @@ class AnalysisIngestionService:
         parameters: dict[str, Any],
     ) -> bool:
         if category == DataCategory.MACRO:
-            return MacroIndicator.objects.filter(
-                series_id=parameters.get("series_id"),
-                source_type=source,
-                observed_at__lte=run.data_cutoff_at.date(),
-                available_at__lte=timezone.now(),
-            ).exists()
+            return self.readiness.macro_series_is_fresh(
+                run,
+                series_id=str(parameters.get("series_id", "")),
+                source=source,
+                knowledge_limit=timezone.now(),
+            )
         inspection = self.readiness.inspect_category(
             run,
             category,

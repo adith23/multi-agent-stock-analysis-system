@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import date, datetime
 from typing import Any
 
 from apps.data_ingestion.domain import DataCategory, SourceType
@@ -60,19 +61,41 @@ class YFinanceConnector(BaseConnector):
                 requested=params.get("statement"),
                 currency=params.get("currency", "USD"),
             )
-        history = ticker.history(
-            start=params.get("start"),
-            end=params.get("end"),
-            period=params.get("period", "1mo"),
-            interval=params.get("interval", "1d"),
-            auto_adjust=False,
-        )
+        start = self._history_date(params.get("start"))
+        end = self._history_date(params.get("end"))
+        history_params = {
+            "start": start,
+            "end": end,
+            "interval": params.get("interval", "1d"),
+            "auto_adjust": False,
+        }
+        # Yahoo accepts at most two of period/start/end. Explicit windows are
+        # authoritative, so do not forward period when both bounds are present.
+        if start is None or end is None:
+            history_params["period"] = params.get("period", "1mo")
+        history = ticker.history(**history_params)
         records: list[dict[str, Any]] = []
         for timestamp, row in history.iterrows():
             item = {str(key).lower().replace(" ", "_"): value for key, value in row.items()}
             item.update({"timestamp": timestamp.isoformat(), "symbol": symbol})
             records.append(item)
         return records
+
+    @staticmethod
+    def _history_date(value: Any) -> Any:
+        """Return Yahoo-compatible date strings for timestamp-shaped windows."""
+        if value is None:
+            return None
+        if isinstance(value, datetime):
+            return value.date().isoformat()
+        if isinstance(value, date):
+            return value.isoformat()
+        if not isinstance(value, str):
+            return value
+        try:
+            return datetime.fromisoformat(value.replace("Z", "+00:00")).date().isoformat()
+        except ValueError:
+            return value
 
     def _financial_statements(
         self,

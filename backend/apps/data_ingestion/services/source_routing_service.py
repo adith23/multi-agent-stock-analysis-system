@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import timedelta
+from datetime import datetime, timedelta
 from statistics import mean
 
 from django.conf import settings
@@ -64,7 +64,11 @@ class SourceRoutingService:
         preference_rank = {str(source): index for index, source in enumerate(preference)}
         now = timezone.now()
         routed: list[RoutedSource] = []
-        queryset = DataSourceConfiguration.objects.filter(is_enabled=True).order_by("priority")
+        queryset = (
+            DataSourceConfiguration.objects.filter(is_enabled=True)
+            .prefetch_related("category_health")
+            .order_by("priority")
+        )
         for config in queryset:
             if not config.supports(category):
                 continue
@@ -72,7 +76,7 @@ class SourceRoutingService:
                 continue
             if not self._supports_exchange(config, ticker):
                 continue
-            if self._is_unhealthy(config, now):
+            if self._is_unhealthy(config, category, now):
                 continue
             if self._rate_limit_exhausted(config, now):
                 continue
@@ -112,12 +116,25 @@ class SourceRoutingService:
         return ticker is None or not supported or ticker.exchange.upper() in supported
 
     @classmethod
-    def _is_unhealthy(cls, config: DataSourceConfiguration, now) -> bool:
-        if config.last_failure_at is None:
+    def _is_unhealthy(
+        cls,
+        config: DataSourceConfiguration,
+        category: str,
+        now: datetime,
+    ) -> bool:
+        health = next(
+            (
+                item
+                for item in config.category_health.all()
+                if item.data_category == category
+            ),
+            None,
+        )
+        if health is None or health.last_failure_at is None:
             return False
-        if config.last_success_at and config.last_success_at >= config.last_failure_at:
+        if health.last_success_at and health.last_success_at >= health.last_failure_at:
             return False
-        return config.last_failure_at >= now - cls.health_cooldown
+        return health.last_failure_at >= now - cls.health_cooldown
 
     @staticmethod
     def _recent_quality(config: DataSourceConfiguration, category: str) -> float:
