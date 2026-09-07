@@ -8,7 +8,7 @@ from .news_item import NewsItem
 from .ohlcv import BarInterval, OHLCVBar
 from .peer_group import PeerGroup
 from .sector import Sector
-from .ticker import SecurityType, Ticker
+from .ticker import SecurityAlias, SecurityType, Ticker
 
 __all__ = [
     "BarInterval",
@@ -20,6 +20,7 @@ __all__ = [
     "OHLCVBar",
     "PeerGroup",
     "Sector",
+    "SecurityAlias",
     "SecurityType",
     "StatementType",
     "Ticker",

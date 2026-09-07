@@ -101,6 +101,24 @@ class AnalysisRunSerializer(serializers.ModelSerializer):
         read_only=True,
     )
     steps = PipelineStepSerializer(many=True, read_only=True)
+    data_preparation = serializers.SerializerMethodField()
+
+    @staticmethod
+    def get_data_preparation(obj) -> dict | None:
+        if not hasattr(obj, "data_preparation"):
+            return None
+        preparation = obj.data_preparation
+        return {
+            "id": str(preparation.id),
+            "status": preparation.status,
+            "requested_categories": preparation.requested_categories,
+            "cache_hits": preparation.cache_hits,
+            "selected_sources": preparation.selected_sources,
+            "warnings": preparation.warnings,
+            "errors": preparation.errors,
+            "started_at": preparation.started_at,
+            "completed_at": preparation.completed_at,
+        }
 
     class Meta:
         model = AnalysisRun
@@ -114,6 +132,9 @@ class AnalysisRunSerializer(serializers.ModelSerializer):
             "initiated_by",
             "celery_task_id",
             "data_cutoff_at",
+            "knowledge_cutoff_at",
+            "is_historical",
+            "data_preparation",
             "configuration_hash",
             "manifest_hash",
             "error_message",

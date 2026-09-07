@@ -21,6 +21,8 @@ class RunManifestService:
         ticker: Ticker,
         data_cutoff_at,
         config: dict[str, Any],
+        knowledge_cutoff_at=None,
+        data_preparation: dict[str, Any] | None = None,
     ) -> tuple[dict[str, Any], str, str]:
         configuration_hash = content_hash(config)
         governance_repository = RiskComplianceRepository()
@@ -42,6 +44,8 @@ class RunManifestService:
                 "currency": ticker.currency,
             },
             "data_cutoff_at": data_cutoff_at,
+            "observation_cutoff_at": data_cutoff_at,
+            "knowledge_cutoff_at": knowledge_cutoff_at,
             "configuration_hash": configuration_hash,
             "runtime": {
                 "llm_provider": settings.LLM_PROVIDER,
@@ -53,9 +57,11 @@ class RunManifestService:
             "governance": governance_snapshot,
             "governance_hash": content_hash(governance_snapshot),
             "point_in_time_policy": {
-                "available_at_lte_data_cutoff": True,
+                "event_time_lte_observation_cutoff": True,
+                "available_at_lte_knowledge_cutoff": knowledge_cutoff_at is not None,
                 "future_observations_permitted": False,
             },
+            "data_preparation": data_preparation or {"status": "pending"},
         }
         # A manifest is both hashable and persistable. Canonicalization converts
         # datetimes, decimals, enums, and sets into deterministic JSON values

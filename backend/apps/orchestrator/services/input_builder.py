@@ -45,6 +45,8 @@ class AgentInputBuilder:
             "macro_indicators": self.market.macro_observations(
                 series,
                 as_of=run.data_cutoff_at,
+                available_as_of=run.knowledge_cutoff_at,
+                source_types=self._sources(run, "macro"),
             ),
             "regime_output": {
                 "regime": current.regime if current else "unknown",
@@ -56,13 +58,17 @@ class AgentInputBuilder:
         return {
             "financials": {
                 "statements": self.market.financial_statements(
-                    run.ticker.symbol,
+                    run.ticker,
                     as_of=run.data_cutoff_at,
+                    available_as_of=run.knowledge_cutoff_at,
+                    source_types=self._sources(run, "financial_statement"),
                 ),
             },
             "company_profile": self.market.company_profile(
-                run.ticker.symbol,
+                run.ticker,
                 as_of=run.data_cutoff_at,
+                available_as_of=run.knowledge_cutoff_at,
+                source_types=self._sources(run, "company_profile"),
             ),
             "macro_context": self._build_macro(run),
         }
@@ -70,14 +76,21 @@ class AgentInputBuilder:
     def _build_technical(self, run: AnalysisRun) -> dict[str, Any]:
         return {
             "ohlcv": self.market.price_bars(
-                run.ticker.symbol,
+                run.ticker,
                 as_of=run.data_cutoff_at,
+                available_as_of=run.knowledge_cutoff_at,
+                source_types=self._sources(run, "ohlcv"),
             ),
             "benchmark_prices": run.analysis_config.get("benchmark_prices", []),
         }
 
     def _build_sentiment(self, run: AnalysisRun) -> dict[str, Any]:
-        news = self.market.news(run.ticker.symbol, as_of=run.data_cutoff_at)
+        news = self.market.news(
+            run.ticker,
+            as_of=run.data_cutoff_at,
+            available_as_of=run.knowledge_cutoff_at,
+            source_types=self._sources(run, "news"),
+        )
         return {
             "news": news,
             "texts": [
@@ -119,3 +132,11 @@ class AgentInputBuilder:
             "mandate": run.analysis_config.get("mandate", {}),
             "catalyst_events": run.analysis_config.get("catalysts", []),
         }
+
+    @staticmethod
+    def _sources(run: AnalysisRun, category: str) -> list[str] | None:
+        try:
+            values = run.data_preparation.selected_sources.get(category, [])
+        except AttributeError:
+            return None
+        return list(values) or None

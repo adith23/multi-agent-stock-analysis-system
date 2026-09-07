@@ -8,7 +8,14 @@ from django.urls import reverse
 from django.utils import timezone
 
 from apps.core.domain.enums import PipelineStatus
-from apps.market_data.models import OHLCVBar, Ticker
+from apps.market_data.models import (
+    CompanyProfile,
+    FinancialStatement,
+    MacroIndicator,
+    OHLCVBar,
+    StatementType,
+    Ticker,
+)
 from apps.orchestrator.models import AnalysisRun
 from apps.portfolio.models import PMReviewRequest
 
@@ -162,6 +169,49 @@ def ticker_and_bars() -> Ticker:
             source_id=f"bar-{index}",
             source_timestamp=timestamp,
             available_at=timestamp,
+            data_quality_score=1,
             content_hash=f"{index:064x}",
+        )
+    CompanyProfile.objects.create(
+        ticker=ticker,
+        legal_name=ticker.name,
+        source_type="e2e",
+        available_at=now,
+        data_quality_score=1,
+        content_hash="profile".ljust(64, "0"),
+    )
+    for index, statement_type in enumerate(
+        (StatementType.INCOME, StatementType.BALANCE_SHEET, StatementType.CASH_FLOW)
+    ):
+        FinancialStatement.objects.create(
+            ticker=ticker,
+            statement_type=statement_type,
+            period_end=now.date() - timedelta(days=90),
+            fiscal_year=now.year,
+            currency="USD",
+            values={"value": 1},
+            source_type="e2e",
+            available_at=now,
+            data_quality_score=1,
+            content_hash=f"statement-{index}".ljust(64, "0"),
+        )
+    macro_ages = {
+        "FEDFUNDS": 30,
+        "CPIAUCSL": 30,
+        "GDPC1": 90,
+        "UNRATE": 30,
+        "DGS10": 2,
+        "DGS2": 2,
+        "VIXCLS": 2,
+    }
+    for index, (series_id, age_days) in enumerate(macro_ages.items()):
+        MacroIndicator.objects.create(
+            series_id=series_id,
+            observed_at=now.date() - timedelta(days=age_days),
+            value=1,
+            source_type="e2e",
+            available_at=now,
+            data_quality_score=1,
+            content_hash=f"macro-{index}".ljust(64, "0"),
         )
     return ticker

@@ -15,6 +15,7 @@ from agents.pm.graph import build_pm_agent_graph
 from apps.audit.models import AuditAction
 from apps.audit.services import AuditService
 from apps.core.domain.enums import PipelineStatus
+from apps.data_ingestion.services import AnalysisDataReadinessService, AnalysisIngestionService
 from apps.market_data.models import OHLCVBar
 from apps.orchestrator.repositories import AnalysisRunRepository
 from apps.orchestrator.services import (
@@ -39,9 +40,26 @@ inputs = AgentInputBuilder()
 
 def build_analysis_canvas(run_id: str):
     """Build the plan-mandated outer Celery pipeline."""
+    run = repository.get(run_id)
+    preparation = AnalysisDataReadinessService().create_plan(run)
+    ingestion_tasks = [
+        ingest_analysis_category.si(run_id, category)
+        for category, entry in preparation.plan.items()
+        if entry.get("fetch")
+    ]
+    if ingestion_tasks:
+        data_preparation = chain(
+            start_data_preparation.si(run_id),
+            chord(group(ingestion_tasks), finalize_data_preparation.si(run_id)),
+        )
+    else:
+        data_preparation = chain(
+            start_data_preparation.si(run_id),
+            finalize_data_preparation.si(run_id),
+        )
 
     return chain(
-        validate_canonical_data.si(run_id),
+        data_preparation,
         chord(
             group(
                 extract_signal_domain.si(run_id, domain)
@@ -77,35 +95,59 @@ def build_analysis_canvas(run_id: str):
     )
 
 
+@shared_task(name="apps.orchestrator.tasks.start_data_preparation")
+def start_data_preparation(run_id: str) -> dict[str, Any]:
+    run = repository.get(run_id)
+    try:
+        run.transition_to(PipelineStatus.INGESTING)
+        preparation = AnalysisIngestionService().start(run_id)
+        return {"preparation_id": str(preparation.id), "status": preparation.status}
+    except Exception as exc:
+        _fail(run_id, exc)
+        raise
+
+
+@shared_task(
+    name="apps.orchestrator.tasks.ingest_analysis_category",
+    soft_time_limit=540,
+    time_limit=600,
+)
+def ingest_analysis_category(run_id: str, category: str) -> dict[str, Any]:
+    try:
+        return AnalysisIngestionService().ingest_category(run_id, category)
+    except Exception as exc:
+        _fail(run_id, exc)
+        raise
+
+
+@shared_task(name="apps.orchestrator.tasks.finalize_data_preparation")
+def finalize_data_preparation(run_id: str) -> dict[str, Any]:
+    run = repository.get(run_id)
+    try:
+        with steps.track(run, name="ingestion_and_normalization", sequence=1) as output:
+            evaluation = AnalysisIngestionService().finalize(run_id)
+            output.update(evaluation)
+        run.refresh_from_db()
+        run.transition_to(PipelineStatus.EXTRACTING_SIGNALS)
+        return output
+    except Exception as exc:
+        _fail(run_id, exc)
+        raise
+
+
 def _fail(run_id: str, exc: Exception) -> None:
     repository.get(run_id).fail(str(exc))
 
 
 @shared_task(name="apps.orchestrator.tasks.validate_canonical_data")
 def validate_canonical_data(run_id: str) -> dict[str, Any]:
+    """Backward-compatible entry point for preparing and validating canonical data."""
     run = repository.get(run_id)
     try:
-        run.transition_to(PipelineStatus.INGESTING)
-        with steps.track(run, name="ingestion_and_normalization", sequence=1) as output:
-            output.update(
-                {
-                    "ohlcv_records": OHLCVBar.objects.filter(
-                        ticker=run.ticker,
-                        timestamp__lte=run.data_cutoff_at,
-                        available_at__lte=run.data_cutoff_at,
-                    ).count(),
-                    "financial_statements": run.ticker.financial_statements.filter(
-                        available_at__lte=run.data_cutoff_at,
-                    ).count(),
-                    "news_items": run.ticker.news_items.filter(
-                        published_at__lte=run.data_cutoff_at,
-                        available_at__lte=run.data_cutoff_at,
-                    ).count(),
-                    "mode": "canonical_store_validation",
-                }
-            )
-        run.transition_to(PipelineStatus.EXTRACTING_SIGNALS)
-        return output
+        if run.status == PipelineStatus.PENDING:
+            AnalysisDataReadinessService().create_plan(run)
+            start_data_preparation(run_id)
+        return finalize_data_preparation(run_id)
     except Exception as exc:
         _fail(run_id, exc)
         raise
@@ -121,6 +163,8 @@ def extract_signal_domain(run_id: str, domain: str) -> dict[str, Any]:
                     SignalExtractionService().extract_technical(
                         run.ticker,
                         as_of=run.data_cutoff_at,
+                        available_as_of=run.knowledge_cutoff_at,
+                        source_types=run.data_preparation.selected_sources.get("ohlcv") or None,
                     )
                 )
             else:

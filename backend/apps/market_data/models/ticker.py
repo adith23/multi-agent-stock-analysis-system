@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils import timezone
 
 from apps.core.models import TimeStampedModel
 
@@ -41,6 +42,9 @@ class Ticker(TimeStampedModel):
         related_name="tickers",
     )
     is_active = models.BooleanField(default=True, db_index=True)
+    is_verified = models.BooleanField(default=False, db_index=True)
+    verification_source = models.CharField(max_length=30, blank=True)
+    verified_at = models.DateTimeField(null=True, blank=True)
 
     objects = TickerQuerySet.as_manager()
 
@@ -62,3 +66,37 @@ class Ticker(TimeStampedModel):
 
     def __str__(self) -> str:
         return f"{self.symbol}:{self.exchange}"
+
+    def mark_verified(self, source: str) -> None:
+        self.is_verified = True
+        self.verification_source = source
+        self.verified_at = timezone.now()
+
+
+class SecurityAlias(TimeStampedModel):
+    """Provider-specific identity for one canonical security."""
+
+    ticker = models.ForeignKey(Ticker, on_delete=models.CASCADE, related_name="aliases")
+    provider = models.CharField(max_length=30)
+    provider_symbol = models.CharField(max_length=64)
+    provider_exchange = models.CharField(max_length=64, blank=True)
+    provider_instrument_id = models.CharField(max_length=128, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=("provider", "provider_symbol", "provider_exchange"),
+                name="uq_security_alias_provider_symbol_exchange",
+            )
+        ]
+        indexes = [models.Index(fields=("provider", "provider_instrument_id"))]
+        ordering = ("provider", "provider_symbol")
+
+    def save(self, *args, **kwargs) -> None:
+        self.provider = self.provider.strip().lower()
+        self.provider_symbol = self.provider_symbol.strip().upper()
+        self.provider_exchange = self.provider_exchange.strip().upper()
+        super().save(*args, **kwargs)
+
+    def __str__(self) -> str:
+        return f"{self.provider}:{self.provider_symbol} -> {self.ticker}"

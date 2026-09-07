@@ -9,6 +9,7 @@ from .models import (
     OHLCVBar,
     PeerGroup,
     Sector,
+    SecurityAlias,
     Ticker,
 )
 
@@ -21,6 +22,7 @@ for model in (
     OHLCVBar,
     PeerGroup,
     Sector,
+    SecurityAlias,
     Ticker,
 ):
     admin.site.register(model)

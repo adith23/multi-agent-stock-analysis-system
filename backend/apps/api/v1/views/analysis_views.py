@@ -30,7 +30,7 @@ from apps.api.v1.serializers import (
 )
 from apps.api.validators import validate_idempotency_key
 from apps.core.utils.hashing import content_hash
-from apps.market_data.models import Ticker
+from apps.data_ingestion.services import SecurityResolutionError, SecurityResolutionService
 from apps.orchestrator.models import AnalysisRun
 from apps.orchestrator.services import PipelineService
 from apps.portfolio.exceptions import (
@@ -64,7 +64,9 @@ class ReviewConflict(APIException):
 
 def _analysis(run_id) -> AnalysisRun:
     return get_object_or_404(
-        AnalysisRun.objects.select_related("ticker", "initiated_by").prefetch_related("steps"),
+        AnalysisRun.objects.select_related(
+            "ticker", "initiated_by", "data_preparation"
+        ).prefetch_related("steps"),
         pk=run_id,
     )
 
@@ -104,9 +106,9 @@ class AnalysisListCreateView(ListCreateAPIView):
         return AnalysisCreateSerializer if self.request.method == "POST" else AnalysisRunSerializer
 
     def get_queryset(self):
-        return AnalysisRun.objects.select_related("ticker", "initiated_by").prefetch_related(
-            "steps"
-        )
+        return AnalysisRun.objects.select_related(
+            "ticker", "initiated_by", "data_preparation"
+        ).prefetch_related("steps")
 
     def post(self, request: Request, *args, **kwargs) -> Response:
         return self.create(request, *args, **kwargs)
@@ -138,11 +140,10 @@ class AnalysisListCreateView(ListCreateAPIView):
                 AnalysisRunSerializer(existing).data,
                 status=status.HTTP_200_OK,
             )
-        ticker = get_object_or_404(
-            Ticker.objects.active(),
-            symbol=data["symbol"],
-            exchange=data["exchange"],
-        )
+        try:
+            ticker = SecurityResolutionService().resolve(data["symbol"], data["exchange"])
+        except SecurityResolutionError as exc:
+            raise NotFound(str(exc)) from exc
         pipeline = PipelineService()
         try:
             run = pipeline.create_run(
@@ -153,6 +154,7 @@ class AnalysisListCreateView(ListCreateAPIView):
                 data_cutoff_at=data["as_of"],
                 idempotency_key=idempotency_key,
                 request_hash=request_hash,
+                is_historical="as_of" in request.data,
             )
         except IntegrityError as exc:
             run = AnalysisRun.objects.get(

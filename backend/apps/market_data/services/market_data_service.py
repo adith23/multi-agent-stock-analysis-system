@@ -102,6 +102,8 @@ class MarketDataProjector:
         data = record.normalized_payload
         profile, _ = CompanyProfile.objects.update_or_create(
             ticker=self._ticker(record),
+            source_type=record.source_type,
+            content_hash=record.content_hash,
             defaults={
                 "legal_name": data.get("name") or data.get("longName", ""),
                 "description": data.get("description") or data.get("longBusinessSummary", ""),
@@ -179,7 +181,8 @@ class MarketDataProjector:
                 "language": data.get("language", "en"),
                 "categories": data.get("categories") or [],
                 "ticker": (
-                    MarketDataService.resolve_ticker(
+                    record.ticker
+                    or MarketDataService.resolve_ticker(
                         (data.get("symbols") or [record.entity_identifier])[0]
                     )
                     if (data.get("symbols") or [record.entity_identifier])[0]
@@ -222,7 +225,10 @@ class MarketDataProjector:
             defaults={"methodology": data.get("methodology", "source-provided peers")},
         )
         group.peers.set(
-            MarketDataService.resolve_ticker(symbol)
+            MarketDataService.resolve_ticker(
+                symbol,
+                exchange=record.ticker.exchange if record.ticker_id else "US",
+            )
             for symbol in data.get("peers", [])
             if symbol and symbol != record.entity_identifier
         )

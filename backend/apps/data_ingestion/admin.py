@@ -1,6 +1,11 @@
 from django.contrib import admin
 
-from .models import DataSourceConfiguration, NormalizedDataRecord, RawInputObject
+from .models import (
+    DataPreparationRun,
+    DataSourceConfiguration,
+    NormalizedDataRecord,
+    RawInputObject,
+)
 
 
 @admin.register(DataSourceConfiguration)
@@ -26,3 +31,19 @@ class NormalizedDataRecordAdmin(admin.ModelAdmin):
         "status",
     )
     list_filter = ("source_type", "data_category", "status")
+
+
+@admin.register(DataPreparationRun)
+class DataPreparationRunAdmin(admin.ModelAdmin):
+    list_display = ("analysis_run", "ticker", "status", "started_at", "completed_at")
+    list_filter = ("status",)
+    readonly_fields = (
+        "plan",
+        "cache_hits",
+        "source_attempts",
+        "fallbacks",
+        "category_results",
+        "selected_sources",
+        "warnings",
+        "errors",
+    )

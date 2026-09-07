@@ -25,6 +25,7 @@ class PipelineService:
         data_cutoff_at=None,
         idempotency_key: str | None = None,
         request_hash: str = "",
+        is_historical: bool = False,
     ) -> AnalysisRun:
         data_cutoff_at = data_cutoff_at or timezone.now()
         run = AnalysisRun(
@@ -35,6 +36,7 @@ class PipelineService:
             data_cutoff_at=data_cutoff_at,
             idempotency_key=idempotency_key,
             request_hash=request_hash,
+            is_historical=is_historical,
         )
         run.checkpoint_thread_id = f"analysis-{run.id}"
         (

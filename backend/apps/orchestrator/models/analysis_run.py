@@ -44,6 +44,8 @@ class AnalysisRun(TimeStampedModel):
     )
     analysis_config = models.JSONField(default=dict)
     data_cutoff_at = models.DateTimeField(default=timezone.now, editable=False, db_index=True)
+    knowledge_cutoff_at = models.DateTimeField(null=True, blank=True, editable=False, db_index=True)
+    is_historical = models.BooleanField(default=False, editable=False)
     run_manifest = models.JSONField(default=dict, editable=False)
     configuration_hash = models.CharField(max_length=64, default="", editable=False)
     manifest_hash = models.CharField(

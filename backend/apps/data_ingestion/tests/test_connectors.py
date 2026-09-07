@@ -203,7 +203,45 @@ def test_alpha_vantage_connector_uses_http_client() -> None:
         client=client,
     )
 
-    assert connector.fetch(DataCategory.QUOTE, symbol="AAPL") == [
-        {"Global Quote": {"05. price": "100"}}
-    ]
+    records = connector.fetch(DataCategory.QUOTE, symbol="AAPL")
+
+    assert records[0]["symbol"] == "AAPL"
+    assert records[0]["current_price"] == "100"
+    assert records[0]["timestamp"]
     response.raise_for_status.assert_called_once()
+
+
+def test_alpha_vantage_connector_normalizes_daily_series() -> None:
+    response = Mock()
+    response.json.return_value = {
+        "Time Series (Daily)": {
+            "2026-07-29": {
+                "1. open": "100",
+                "2. high": "110",
+                "3. low": "95",
+                "4. close": "105",
+                "5. volume": "1000",
+            }
+        }
+    }
+    client = Mock()
+    client.get.return_value = response
+
+    records = AlphaVantageConnector(
+        {"api_key": "test", "retry_attempts": 1},
+        client=client,
+    ).fetch(DataCategory.OHLCV, symbol="AAPL")
+
+    assert records == [
+        {
+            "symbol": "AAPL",
+            "timestamp": "2026-07-29T00:00:00+00:00",
+            "interval": "1d",
+            "open": "100",
+            "high": "110",
+            "low": "95",
+            "close": "105",
+            "volume": "1000",
+        }
+    ]
+    assert client.get.call_args.kwargs["params"]["outputsize"] == "full"

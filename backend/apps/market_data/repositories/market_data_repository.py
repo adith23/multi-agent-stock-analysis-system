@@ -13,6 +13,7 @@ from apps.market_data.models import (
     MacroIndicator,
     NewsItem,
     OHLCVBar,
+    Ticker,
 )
 
 
@@ -23,13 +24,19 @@ class MarketDataRepository:
         *,
         per_series_limit: int = 24,
         as_of=None,
+        available_as_of=None,
+        source_types: list[str] | None = None,
     ) -> list[dict[str, Any]]:
         queryset = MacroIndicator.objects.filter(series_id__in=series_ids)
+        if source_types:
+            queryset = queryset.filter(source_type__in=source_types)
         if as_of is not None:
             queryset = queryset.filter(
                 observed_at__lte=as_of.date(),
-                available_at__lte=as_of,
             )
+        availability_cutoff = available_as_of or as_of
+        if availability_cutoff is not None:
+            queryset = queryset.filter(available_at__lte=availability_cutoff)
         rows = queryset.order_by("series_id", "-observed_at").values(
             "series_id",
             "title",
@@ -50,17 +57,21 @@ class MarketDataRepository:
 
     def financial_statements(
         self,
-        ticker: str,
+        ticker: Ticker | str,
         *,
         limit: int = 12,
         as_of=None,
+        available_as_of=None,
+        source_types: list[str] | None = None,
     ) -> list[dict[str, Any]]:
-        queryset = FinancialStatement.objects.filter(ticker__symbol=ticker.upper())
+        queryset = FinancialStatement.objects.filter(**self._ticker_filter(ticker))
+        if source_types:
+            queryset = queryset.filter(source_type__in=source_types)
         if as_of is not None:
-            queryset = queryset.filter(
-                period_end__lte=as_of.date(),
-                available_at__lte=as_of,
-            )
+            queryset = queryset.filter(period_end__lte=as_of.date())
+        availability_cutoff = available_as_of or as_of
+        if availability_cutoff is not None:
+            queryset = queryset.filter(available_at__lte=availability_cutoff)
         return list(
             queryset.order_by("-period_end").values(
                 "statement_type",
@@ -74,12 +85,22 @@ class MarketDataRepository:
             )[:limit]
         )
 
-    def company_profile(self, ticker: str, *, as_of=None) -> dict[str, Any]:
-        queryset = CompanyProfile.objects.filter(ticker__symbol=ticker.upper())
-        if as_of is not None:
-            queryset = queryset.filter(available_at__lte=as_of)
+    def company_profile(
+        self,
+        ticker: Ticker | str,
+        *,
+        as_of=None,
+        available_as_of=None,
+        source_types: list[str] | None = None,
+    ) -> dict[str, Any]:
+        queryset = CompanyProfile.objects.filter(**self._ticker_filter(ticker))
+        if source_types:
+            queryset = queryset.filter(source_type__in=source_types)
+        availability_cutoff = available_as_of or as_of
+        if availability_cutoff is not None:
+            queryset = queryset.filter(available_at__lte=availability_cutoff)
         return (
-            queryset.values(
+            queryset.order_by("-available_at").values(
                 "legal_name",
                 "description",
                 "website",
@@ -94,18 +115,25 @@ class MarketDataRepository:
 
     def price_bars(
         self,
-        ticker: str,
+        ticker: Ticker | str,
         *,
         interval: str = "1d",
         limit: int = 252,
         as_of=None,
+        available_as_of=None,
+        source_types: list[str] | None = None,
     ) -> list[dict[str, Any]]:
         queryset = OHLCVBar.objects.filter(
-            ticker__symbol=ticker.upper(),
             interval=interval,
+            **self._ticker_filter(ticker),
         )
+        if source_types:
+            queryset = queryset.filter(source_type__in=source_types)
         if as_of is not None:
-            queryset = queryset.filter(timestamp__lte=as_of, available_at__lte=as_of)
+            queryset = queryset.filter(timestamp__lte=as_of)
+        availability_cutoff = available_as_of or as_of
+        if availability_cutoff is not None:
+            queryset = queryset.filter(available_at__lte=availability_cutoff)
         rows = list(
             queryset.order_by("-timestamp").values(
                 "timestamp", "open", "high", "low", "close", "volume", "source_id"
@@ -115,19 +143,24 @@ class MarketDataRepository:
 
     def news(
         self,
-        ticker: str,
+        ticker: Ticker | str,
         *,
         lookback_days: int = 30,
         limit: int = 100,
         as_of=None,
+        available_as_of=None,
+        source_types: list[str] | None = None,
     ) -> list[dict[str, Any]]:
         as_of = as_of or timezone.now()
+        availability_cutoff = available_as_of or as_of
+        source_filter = {"source_type__in": source_types} if source_types else {}
         return list(
             NewsItem.objects.filter(
-                ticker__symbol=ticker.upper(),
+                **self._ticker_filter(ticker),
+                **source_filter,
                 published_at__gte=as_of - timedelta(days=lookback_days),
                 published_at__lte=as_of,
-                available_at__lte=as_of,
+                available_at__lte=availability_cutoff,
             )
             .order_by("-published_at")
             .values(
@@ -141,3 +174,9 @@ class MarketDataRepository:
                 "source_id",
             )[:limit]
         )
+
+    @staticmethod
+    def _ticker_filter(ticker: Ticker | str) -> dict[str, Any]:
+        if isinstance(ticker, Ticker):
+            return {"ticker": ticker}
+        return {"ticker__symbol": ticker.strip().upper()}

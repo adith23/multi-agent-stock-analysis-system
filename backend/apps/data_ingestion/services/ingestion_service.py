@@ -6,7 +6,7 @@ from collections.abc import Mapping
 from datetime import date, datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from django.conf import settings
 from django.db import close_old_connections, transaction
@@ -34,6 +34,9 @@ from .normalization_service import NormalizationService
 from .quality_service import DataQualityService
 
 logger = logging.getLogger(__name__)
+
+if TYPE_CHECKING:
+    from apps.market_data.models import Ticker
 
 
 def _json_safe(value: Any) -> Any:
@@ -92,6 +95,7 @@ class IngestionService:
         category: str,
         *,
         connector=None,
+        ticker: Ticker | None = None,
         **params: Any,
     ) -> IngestionBatchResult:
         source = source_config.source_type
@@ -128,6 +132,7 @@ class IngestionService:
                     category,
                     _json_safe(payload),
                     params,
+                    ticker=ticker,
                 )
                 setattr(result, outcome, getattr(result, outcome) + 1)
                 result.record_ids.extend(ids)
@@ -153,10 +158,16 @@ class IngestionService:
         category: str,
         payload: dict[str, Any],
         request_params: Mapping[str, Any],
+        *,
+        ticker: Ticker | None = None,
     ) -> tuple[str, list[str]]:
         source = source_config.source_type
         fingerprint = content_hash(payload)
-        entity = str(request_params.get("symbol") or request_params.get("series_id") or "").upper()
+        entity = str(
+            ticker.symbol
+            if ticker is not None
+            else request_params.get("symbol") or request_params.get("series_id") or ""
+        ).upper()
         with transaction.atomic():
             raw, raw_created = RawInputObject.objects.get_or_create(
                 source_type=source,
@@ -189,7 +200,7 @@ class IngestionService:
             duplicate_count = 0
             rejected_count = 0
             for normalized in normalized_values:
-                status, record = self._persist_normalized(raw, normalized)
+                status, record = self._persist_normalized(raw, normalized, ticker=ticker)
                 if status == IngestionStatus.ACCEPTED:
                     self._project(record)
                     accepted_count += 1
@@ -229,6 +240,8 @@ class IngestionService:
         self,
         raw: RawInputObject,
         value: NormalizedRecordData,
+        *,
+        ticker: Ticker | None = None,
     ) -> tuple[str, NormalizedDataRecord]:
         payload = _json_safe(value.payload)
         fingerprint = self.deduplication.exact_fingerprint(payload)
@@ -251,12 +264,12 @@ class IngestionService:
         elif not assessment.is_acceptable:
             status = IngestionStatus.REJECTED
 
-        ticker = None
-        if value.entity_identifier and value.category != DataCategory.MACRO:
-            ticker = MarketDataService.resolve_ticker(value.entity_identifier)
+        canonical_ticker = None if value.category == DataCategory.MACRO else ticker
+        if canonical_ticker is None and value.entity_identifier and value.category != DataCategory.MACRO:
+            canonical_ticker = MarketDataService.resolve_ticker(value.entity_identifier)
         record = NormalizedDataRecord.objects.create(
             raw_input=raw,
-            ticker=ticker,
+            ticker=canonical_ticker,
             source_type=str(value.source_type),
             source_id=value.source_id,
             source_timestamp=value.source_timestamp,

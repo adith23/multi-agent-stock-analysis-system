@@ -32,10 +32,17 @@ class SignalExtractionService:
         interval: str = "1d",
         limit: int = 252,
         as_of=None,
+        available_as_of=None,
+        source_types: list[str] | None = None,
     ) -> dict[str, Any]:
         queryset = OHLCVBar.objects.filter(ticker=ticker, interval=interval)
+        if source_types:
+            queryset = queryset.filter(source_type__in=source_types)
         if as_of is not None:
-            queryset = queryset.filter(timestamp__lte=as_of, available_at__lte=as_of)
+            queryset = queryset.filter(timestamp__lte=as_of)
+        availability_cutoff = available_as_of or as_of
+        if availability_cutoff is not None:
+            queryset = queryset.filter(available_at__lte=availability_cutoff)
         bars = list(queryset.order_by("-timestamp")[:limit])
         bars.reverse()
         data = [

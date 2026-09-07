@@ -4,8 +4,8 @@ from apps.core.models import ProvenanceMixin, TimeStampedModel
 
 
 class CompanyProfile(TimeStampedModel, ProvenanceMixin):
-    ticker = models.OneToOneField(
-        "market_data.Ticker", on_delete=models.CASCADE, related_name="profile"
+    ticker = models.ForeignKey(
+        "market_data.Ticker", on_delete=models.CASCADE, related_name="profiles"
     )
     legal_name = models.CharField(max_length=255, blank=True)
     description = models.TextField(blank=True)
@@ -17,6 +17,15 @@ class CompanyProfile(TimeStampedModel, ProvenanceMixin):
     )
     ipo_date = models.DateField(null=True, blank=True)
     attributes = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=("ticker", "source_type", "content_hash"),
+                name="uq_company_profile_ticker_source_hash",
+            )
+        ]
+        indexes = [models.Index(fields=("ticker", "-available_at"))]
 
     def __str__(self) -> str:
         return f"Profile: {self.ticker}"
