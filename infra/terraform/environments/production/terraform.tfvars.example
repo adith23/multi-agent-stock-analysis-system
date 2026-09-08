@@ -1,0 +1,7 @@
+project_id              = "your-gcp-project-id"
+region                  = "us-central1"
+environment             = "production"
+image_tag               = "replace-with-git-sha"
+create_runtime_services = true
+alert_email              = "operations@example.com"
+sec_edgar_identity       = "Research Team operations@example.com"

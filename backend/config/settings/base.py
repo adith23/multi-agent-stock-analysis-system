@@ -6,6 +6,7 @@ Environment-specific policy belongs in ``development.py``, ``testing.py``, or
 
 from __future__ import annotations
 
+import os
 import ssl
 from datetime import timedelta
 from pathlib import Path
@@ -14,8 +15,12 @@ import environ
 import structlog
 from corsheaders.defaults import default_headers
 
+from config.secret_bundle import load_secret_bundle
+
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 PROJECT_DIR = BASE_DIR.parent
+
+load_secret_bundle()
 
 env = environ.Env(
     DJANGO_DEBUG=(bool, False),
@@ -38,6 +43,38 @@ ALLOWED_HOSTS = env.list(
     default=["localhost", "127.0.0.1"],
 )
 
+# Task execution. Celery is retained for local development; Cloud Tasks sends
+# authenticated HTTP requests to the Cloud Run worker in deployed environments.
+_default_task_backend = (
+    "cloud_tasks"
+    if os.environ.get("DJANGO_SETTINGS_MODULE") == "config.settings.production"
+    else "celery"
+)
+TASK_BACKEND = env("TASK_BACKEND", default=_default_task_backend).casefold()
+GCP_PROJECT_ID = env("GCP_PROJECT_ID", default="")
+GCP_LOCATION = env("GCP_LOCATION", default="us-central1")
+CLOUD_RUN_BACKEND_URL = env("CLOUD_RUN_BACKEND_URL", default="")
+CLOUD_RUN_WORKER_URL = env("CLOUD_RUN_WORKER_URL", default="")
+CLOUD_TASKS_SA_EMAIL = env("CLOUD_TASKS_SA_EMAIL", default="")
+CLOUD_SCHEDULER_SA_EMAIL = env("CLOUD_SCHEDULER_SA_EMAIL", default="")
+CLOUD_TASKS_DISPATCH_DEADLINE_SECONDS = env.int(
+    "CLOUD_TASKS_DISPATCH_DEADLINE_SECONDS",
+    default=1800,
+)
+INTERNAL_ENDPOINTS_ALLOW_UNAUTHENTICATED = env.bool(
+    "INTERNAL_ENDPOINTS_ALLOW_UNAUTHENTICATED",
+    default=False,
+)
+INTERNAL_TASK_MAX_BODY_BYTES = env.int("INTERNAL_TASK_MAX_BODY_BYTES", default=1_048_576)
+INTERNAL_TASK_LOCK_TIMEOUT_SECONDS = env.int(
+    "INTERNAL_TASK_LOCK_TIMEOUT_SECONDS",
+    default=2100,
+)
+INTERNAL_TASK_DEDUPLICATION_SECONDS = env.int(
+    "INTERNAL_TASK_DEDUPLICATION_SECONDS",
+    default=604_800,
+)
+
 DJANGO_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -54,9 +91,10 @@ THIRD_PARTY_APPS = [
     "django_filters",
     "guardian",
     "auditlog",
-    "django_celery_beat",
     "drf_spectacular",
 ]
+if TASK_BACKEND != "cloud_tasks":
+    THIRD_PARTY_APPS.append("django_celery_beat")
 
 LOCAL_APPS = [
     "apps.core",
@@ -146,44 +184,45 @@ CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT = 600
 CELERY_TASK_SOFT_TIME_LIMIT = 540
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
-CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
-CELERY_BEAT_SCHEDULE = {
-    "ingest-enabled-market-sources-hourly": {
-        "task": "apps.data_ingestion.tasks.ingest_enabled_sources",
-        "schedule": 3600.0,
-        "kwargs": {"categories": ["quote", "ohlcv", "news"]},
-    },
-    "ingest-enabled-reference-sources-daily": {
-        "task": "apps.data_ingestion.tasks.ingest_enabled_sources",
-        "schedule": 86400.0,
-        "kwargs": {
-            "categories": [
-                "company_profile",
-                "financial_statement",
-                "filing",
-                "ownership",
-                "peer_group",
-                "macro",
-            ]
+if TASK_BACKEND != "cloud_tasks":
+    CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
+    CELERY_BEAT_SCHEDULE = {
+        "ingest-enabled-market-sources-hourly": {
+            "task": "apps.data_ingestion.tasks.ingest_enabled_sources",
+            "schedule": 3600.0,
+            "kwargs": {"categories": ["quote", "ohlcv", "news"]},
         },
-    },
-    "monitor-active-exit-triggers": {
-        "task": "apps.portfolio.tasks.monitor_exit_triggers",
-        "schedule": 300.0,
-    },
-    "monitor-active-catalysts": {
-        "task": "apps.portfolio.tasks.monitor_catalysts",
-        "schedule": 3600.0,
-    },
-    "track-recommendation-performance": {
-        "task": "apps.portfolio.tasks.track_recommendation_performance",
-        "schedule": 86400.0,
-    },
-    "expire-pm-reviews": {
-        "task": "apps.portfolio.tasks.expire_pm_reviews",
-        "schedule": 300.0,
-    },
-}
+        "ingest-enabled-reference-sources-daily": {
+            "task": "apps.data_ingestion.tasks.ingest_enabled_sources",
+            "schedule": 86400.0,
+            "kwargs": {
+                "categories": [
+                    "company_profile",
+                    "financial_statement",
+                    "filing",
+                    "ownership",
+                    "peer_group",
+                    "macro",
+                ]
+            },
+        },
+        "monitor-active-exit-triggers": {
+            "task": "apps.portfolio.tasks.monitor_exit_triggers",
+            "schedule": 300.0,
+        },
+        "monitor-active-catalysts": {
+            "task": "apps.portfolio.tasks.monitor_catalysts",
+            "schedule": 3600.0,
+        },
+        "track-recommendation-performance": {
+            "task": "apps.portfolio.tasks.track_recommendation_performance",
+            "schedule": 86400.0,
+        },
+        "expire-pm-reviews": {
+            "task": "apps.portfolio.tasks.expire_pm_reviews",
+            "schedule": 300.0,
+        },
+    }
 if CELERY_BROKER_URL.startswith("rediss://"):
     CELERY_BROKER_USE_SSL = {"ssl_cert_reqs": ssl.CERT_REQUIRED}
 if CELERY_RESULT_BACKEND.startswith("rediss://"):
@@ -257,7 +296,9 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
-ML_MODEL_DIR = env("ML_MODEL_DIR", default=str(PROJECT_DIR / "ml_models"))
+ML_MODEL_DIR = env("ML_MODEL_DIR", default=str(BASE_DIR / "ml_models"))
+ML_MODEL_CACHE_DIR = env("ML_MODEL_CACHE_DIR", default="/tmp/stockanalysis-ml-models")
+GCS_ML_MODELS_BUCKET = env("GCS_ML_MODELS_BUCKET", default="")
 
 GOOGLE_API_KEY = env("GOOGLE_API_KEY", default="")
 LLM_PROVIDER = env("LLM_PROVIDER", default="gemini")
@@ -317,7 +358,7 @@ LOG_LEVEL = env("LOG_LEVEL", default="INFO")
 
 if DEBUG:
     # Human-friendly, colored, aligned terminal output for development
-    log_formatter_processor = structlog.dev.ConsoleRenderer(colors=True, pad_event=30)
+    log_formatter_processor = structlog.dev.ConsoleRenderer(colors=True, pad_event_to=30)
     log_time_stamper = structlog.processors.TimeStamper(fmt="%Y-%m-%d %H:%M:%S", utc=False)
     try:
         import rich.traceback

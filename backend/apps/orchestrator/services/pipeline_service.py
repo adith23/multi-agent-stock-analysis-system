@@ -65,9 +65,13 @@ class PipelineService:
         return run
 
     def dispatch(self, run: AnalysisRun) -> str:
-        from apps.orchestrator.tasks import build_analysis_canvas
+        from config.task_backend import dispatch_task
 
-        result = build_analysis_canvas(str(run.id)).apply_async()
-        run.celery_task_id = result.id
+        task_id = dispatch_task(
+            "apps.orchestrator.tasks.run_full_pipeline",
+            args=(str(run.id),),
+            queue="orchestrator",
+        )
+        run.celery_task_id = task_id
         run.save(update_fields=("celery_task_id", "updated_at"))
-        return result.id
+        return task_id

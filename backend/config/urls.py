@@ -15,4 +15,5 @@ urlpatterns = [
         name="api-docs",
     ),
     path("api/v1/", include("apps.api.v1.urls")),
+    path("api/internal/", include("apps.core.urls_internal")),
 ]

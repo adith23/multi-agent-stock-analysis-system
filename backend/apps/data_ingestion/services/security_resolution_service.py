@@ -139,12 +139,11 @@ class SecurityResolutionService:
         if not records:
             raise ValueError("provider returned no company profile")
         payload = records[0]
-        provider_symbol = str(
-            payload.get("ticker")
-            or payload.get("symbol")
-            or payload.get("Symbol")
-            or ""
-        ).strip().upper()
+        provider_symbol = (
+            str(payload.get("ticker") or payload.get("symbol") or payload.get("Symbol") or "")
+            .strip()
+            .upper()
+        )
         if not provider_symbol or not cls._symbols_equivalent(provider_symbol, requested_symbol):
             raise ValueError("provider response did not match the requested symbol")
         name = str(
@@ -157,18 +156,27 @@ class SecurityResolutionService:
         if not name:
             raise ValueError("provider response did not contain an official security name")
         currency = str(payload.get("currency") or payload.get("Currency") or "USD").upper()
-        provider_exchange = str(
-            payload.get("exchange")
-            or payload.get("fullExchangeName")
-            or payload.get("Exchange")
-            or requested_exchange
-        ).strip().upper()
-        raw_type = str(
-            payload.get("quoteType")
-            or payload.get("assetType")
-            or payload.get("AssetType")
-            or "EQUITY"
-        ).replace("_", "").replace(" ", "").upper()
+        provider_exchange = (
+            str(
+                payload.get("exchange")
+                or payload.get("fullExchangeName")
+                or payload.get("Exchange")
+                or requested_exchange
+            )
+            .strip()
+            .upper()
+        )
+        raw_type = (
+            str(
+                payload.get("quoteType")
+                or payload.get("assetType")
+                or payload.get("AssetType")
+                or "EQUITY"
+            )
+            .replace("_", "")
+            .replace(" ", "")
+            .upper()
+        )
         security_type = cls.SUPPORTED_TYPES.get(raw_type)
         if security_type is None:
             raise ValueError(f"unsupported security type: {raw_type}")

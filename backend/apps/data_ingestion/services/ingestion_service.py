@@ -135,7 +135,10 @@ class IngestionService:
         )
         if uses_bulk_path:
             for offset in range(0, len(raw_records), self.batch_size):
-                payloads = [_json_safe(payload) for payload in raw_records[offset : offset + self.batch_size]]
+                payloads = [
+                    _json_safe(payload)
+                    for payload in raw_records[offset : offset + self.batch_size]
+                ]
                 try:
                     outcomes = self._process_payload_batch(
                         source_config,
@@ -524,7 +527,11 @@ class IngestionService:
             status = IngestionStatus.REJECTED
 
         canonical_ticker = None if value.category == DataCategory.MACRO else ticker
-        if canonical_ticker is None and value.entity_identifier and value.category != DataCategory.MACRO:
+        if (
+            canonical_ticker is None
+            and value.entity_identifier
+            and value.category != DataCategory.MACRO
+        ):
             canonical_ticker = MarketDataService.resolve_ticker(value.entity_identifier)
         record = NormalizedDataRecord.objects.create(
             raw_input=raw,

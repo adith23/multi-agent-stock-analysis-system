@@ -1,0 +1,152 @@
+# Main-branch delivery: build, push, migrate, deploy, and smoke-test.
+substitutions:
+  _GCP_REGION: us-central1
+  _AR_REPO: stock-analysis
+  _BACKEND_SERVICE: backend-api
+  _FRONTEND_SERVICE: frontend
+  _WORKER_SERVICE: task-worker
+
+steps:
+  - id: prepare-runtime-urls
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: bash
+    args:
+      - -ceu
+      - |
+        printf '%s' "https://${_BACKEND_SERVICE}-${PROJECT_NUMBER}.${_GCP_REGION}.run.app" > /workspace/backend-url.txt
+
+  - id: build-backend
+    name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - --file=docker/Dockerfile
+      - --tag=${_GCP_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/backend:${SHORT_SHA}
+      - --tag=${_GCP_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/backend:latest
+      - .
+
+  - id: build-frontend
+    name: gcr.io/cloud-builders/docker
+    entrypoint: bash
+    args:
+      - -ceu
+      - |
+        BACKEND_URL=$$(cat /workspace/backend-url.txt)
+        docker build --file=docker/Dockerfile.frontend \
+          --build-arg="NEXT_PUBLIC_API_BASE_URL=$${BACKEND_URL}/api/v1" \
+          --build-arg="NEXT_PUBLIC_SSE_BASE_URL=$${BACKEND_URL}/api/v1" \
+          --tag="${_GCP_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/frontend:${SHORT_SHA}" \
+          --tag="${_GCP_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/frontend:latest" .
+    waitFor: [prepare-runtime-urls]
+
+  - id: push-backend
+    name: gcr.io/cloud-builders/docker
+    args: [push, --all-tags, "${_GCP_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/backend"]
+    waitFor: [build-backend]
+
+  - id: push-frontend
+    name: gcr.io/cloud-builders/docker
+    args: [push, --all-tags, "${_GCP_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/frontend"]
+    waitFor: [build-frontend]
+
+  - id: update-migration-job
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: gcloud
+    args:
+      - run
+      - jobs
+      - update
+      - db-migrate
+      - --image=${_GCP_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/backend:${SHORT_SHA}
+      - --region=${_GCP_REGION}
+      - --quiet
+    waitFor: [push-backend]
+
+  - id: db-migrate
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: gcloud
+    args: [run, jobs, execute, db-migrate, "--region=${_GCP_REGION}", --wait, --quiet]
+    waitFor: [update-migration-job]
+
+  - id: deploy-backend
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - ${_BACKEND_SERVICE}
+      - --image=${_GCP_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/backend:${SHORT_SHA}
+      - --region=${_GCP_REGION}
+      - --platform=managed
+      - --port=8000
+      - --memory=512Mi
+      - --cpu=1
+      - --concurrency=40
+      - --min-instances=0
+      - --max-instances=2
+      - --timeout=300s
+      - --service-account=cloud-run-sa@${PROJECT_ID}.iam.gserviceaccount.com
+      - --allow-unauthenticated
+      - --quiet
+    waitFor: [db-migrate]
+
+  - id: deploy-worker
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - ${_WORKER_SERVICE}
+      - --image=${_GCP_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/backend:${SHORT_SHA}
+      - --region=${_GCP_REGION}
+      - --platform=managed
+      - --port=8000
+      - --memory=1Gi
+      - --cpu=1
+      - --concurrency=1
+      - --min-instances=0
+      - --max-instances=4
+      - --timeout=1800s
+      - --service-account=cloud-run-sa@${PROJECT_ID}.iam.gserviceaccount.com
+      - --ingress=internal
+      - --no-allow-unauthenticated
+      - --quiet
+    waitFor: [db-migrate]
+
+  - id: deploy-frontend
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - ${_FRONTEND_SERVICE}
+      - --image=${_GCP_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/frontend:${SHORT_SHA}
+      - --region=${_GCP_REGION}
+      - --platform=managed
+      - --port=3000
+      - --memory=256Mi
+      - --cpu=1
+      - --concurrency=80
+      - --min-instances=0
+      - --max-instances=2
+      - --timeout=60s
+      - --service-account=cloud-run-sa@${PROJECT_ID}.iam.gserviceaccount.com
+      - --allow-unauthenticated
+      - --quiet
+    waitFor: [push-frontend]
+
+  - id: smoke-test
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: bash
+    args:
+      - -ceu
+      - |
+        BACKEND_URL=$$(gcloud run services describe "${_BACKEND_SERVICE}" --region="${_GCP_REGION}" --format='value(status.url)')
+        FRONTEND_URL=$$(gcloud run services describe "${_FRONTEND_SERVICE}" --region="${_GCP_REGION}" --format='value(status.url)')
+        curl --fail --show-error --silent --retry 5 --retry-all-errors "$${BACKEND_URL}/api/v1/health/live/"
+        curl --fail --show-error --silent --retry 5 --retry-all-errors "$${FRONTEND_URL}/" > /dev/null
+    waitFor: [deploy-backend, deploy-worker, deploy-frontend]
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+timeout: 1800s

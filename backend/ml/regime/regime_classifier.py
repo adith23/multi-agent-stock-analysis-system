@@ -5,6 +5,7 @@ from typing import Any
 
 import joblib
 import numpy as np
+from django.conf import settings
 
 from engines.exceptions import EngineInputError, InsufficientDataError
 from ml.base import MLModel
@@ -30,8 +31,14 @@ class RegimeClassifier(MLModel):
         self.model = model
         self.scaler = scaler
         self.regime_map = {int(state): str(label) for state, label in (regime_map or {}).items()}
-        if model_path and Path(model_path).exists():
-            self.load(model_path)
+        if model_path:
+            resolved_path = Path(model_path)
+            if not resolved_path.exists() and settings.GCS_ML_MODELS_BUCKET:
+                from ml.model_loader import get_model_path
+
+                resolved_path = get_model_path(model_path)
+            if resolved_path.exists():
+                self.load(str(resolved_path))
 
     def _initialize(self) -> None:
         if self.model is None or self.scaler is None:

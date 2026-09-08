@@ -1,6 +1,7 @@
 .git
 .github
 .env
+**/.env
 **/__pycache__
 **/*.py[cod]
 **/.pytest_cache
@@ -12,4 +13,6 @@ frontend/node_modules
 frontend/.next
 backend/test.sqlite3
 backend/staticfiles
-
+backend/.coverage
+docs
+infra

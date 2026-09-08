@@ -34,6 +34,7 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
   typedRoutes: true,
+  output: "standalone",
   experimental: {
     optimizePackageImports: ["lucide-react", "recharts"],
   },

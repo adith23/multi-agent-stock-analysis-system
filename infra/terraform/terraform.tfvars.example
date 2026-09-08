@@ -1,0 +1,10 @@
+project_id        = "your-gcp-project-id"
+region            = "us-central1"
+environment       = "production"
+image_tag         = "replace-with-git-sha"
+alert_email       = "operations@example.com"
+sec_edgar_identity = "Research Team operations@example.com"
+
+# Set false for the foundation bootstrap. Set true after images are pushed and
+# every Secret Manager secret has a latest version.
+create_runtime_services = false

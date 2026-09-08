@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from django.conf import settings
 from django.core.cache import cache
 from django.db import connection
 from rest_framework import status
@@ -45,10 +46,13 @@ class ReadinessView(GenericAPIView):
     serializer_class = ReadinessSerializer
 
     def get(self, request: Request) -> Response:
+        task_backend = str(settings.TASK_BACKEND)
         checks = {
             "database": self._database_ready(),
             "cache": self._cache_ready(),
-            "celery_broker": self._broker_ready(),
+            (
+                "cloud_tasks_configuration" if task_backend == "cloud_tasks" else "celery_broker"
+            ): self._task_backend_ready(),
         }
         ready = all(checks.values())
         return Response(
@@ -75,7 +79,16 @@ class ReadinessView(GenericAPIView):
             return False
 
     @staticmethod
-    def _broker_ready() -> bool:
+    def _task_backend_ready() -> bool:
+        if settings.TASK_BACKEND == "cloud_tasks":
+            return all(
+                (
+                    settings.GCP_PROJECT_ID,
+                    settings.GCP_LOCATION,
+                    settings.CLOUD_RUN_WORKER_URL,
+                    settings.CLOUD_TASKS_SA_EMAIL,
+                )
+            )
         try:
             with celery_app.connection_for_read() as connection:
                 connection.ensure_connection(max_retries=1, timeout=2)

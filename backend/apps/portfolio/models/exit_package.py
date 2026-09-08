@@ -39,7 +39,11 @@ class ExitStrategyPackage(TimeStampedModel, VersionedMixin):
         was_triggered = False
         if self.pk:
             previous = ExitStrategyPackage.objects.filter(pk=self.pk).values("status").first()
-            if previous and previous["status"] != ExitPackageStatus.TRIGGERED and self.status == ExitPackageStatus.TRIGGERED:
+            if (
+                previous
+                and previous["status"] != ExitPackageStatus.TRIGGERED
+                and self.status == ExitPackageStatus.TRIGGERED
+            ):
                 was_triggered = True
         elif self.status == ExitPackageStatus.TRIGGERED:
             was_triggered = True
@@ -49,6 +53,7 @@ class ExitStrategyPackage(TimeStampedModel, VersionedMixin):
         if was_triggered:
             try:
                 from django.utils import timezone
+
                 from apps.core.events import EventBus
 
                 price = float(self.current_price or self.stop_loss_price or 0.0)
@@ -62,7 +67,11 @@ class ExitStrategyPackage(TimeStampedModel, VersionedMixin):
                         "ticker": ticker_sym,
                         "trigger": self.trigger_type or "stop_loss",
                         "price": price,
-                        "detected_at": self.triggered_at.isoformat() if self.triggered_at else timezone.now().isoformat(),
+                        "detected_at": (
+                            self.triggered_at.isoformat()
+                            if self.triggered_at
+                            else timezone.now().isoformat()
+                        ),
                     },
                     event_id=str(self.id),
                 )

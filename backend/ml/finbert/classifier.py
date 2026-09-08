@@ -20,10 +20,21 @@ class FinBERTClassifier(MLModel):
         if self._pipeline is None:
             from transformers import pipeline
 
+            model: str = self.MODEL_NAME
+            try:
+                from django.conf import settings
+
+                if settings.GCS_ML_MODELS_BUCKET:
+                    from ml.model_loader import get_model_path
+
+                    model = str(get_model_path("finbert"))
+            except RuntimeError:
+                # The model is also usable in standalone ML tooling without Django.
+                pass
             self._pipeline = pipeline(
                 "text-classification",
-                model=self.MODEL_NAME,
-                tokenizer=self.MODEL_NAME,
+                model=model,
+                tokenizer=model,
                 top_k=None,
             )
         return self._pipeline

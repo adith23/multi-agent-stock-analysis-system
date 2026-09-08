@@ -1,0 +1,83 @@
+# Pull-request validation for backend and frontend.
+steps:
+  - id: start-postgres
+    name: gcr.io/cloud-builders/docker
+    args:
+      - run
+      - --name=postgres
+      - --network=cloudbuild
+      - --detach
+      - --env=POSTGRES_DB=stockanalysis_test
+      - --env=POSTGRES_USER=stockanalysis
+      - --env=POSTGRES_PASSWORD=stockanalysis
+      - postgres:16-alpine
+
+  - id: start-redis
+    name: gcr.io/cloud-builders/docker
+    args: [run, --name=redis, --network=cloudbuild, --detach, redis:7-alpine]
+
+  - id: wait-for-services
+    name: gcr.io/cloud-builders/docker
+    entrypoint: bash
+    args:
+      - -ceu
+      - |
+        for attempt in $$(seq 1 30); do
+          if docker exec postgres pg_isready -U stockanalysis -d stockanalysis_test; then break; fi
+          if [ "$$attempt" = 30 ]; then exit 1; fi
+          sleep 2
+        done
+        for attempt in $$(seq 1 15); do
+          if docker exec redis redis-cli ping; then break; fi
+          if [ "$$attempt" = 15 ]; then exit 1; fi
+          sleep 2
+        done
+    waitFor: [start-postgres, start-redis]
+
+  - id: backend-quality
+    name: python:3.12-slim
+    dir: backend
+    entrypoint: bash
+    args:
+      - -ceu
+      - |
+        python -m pip install --disable-pip-version-check -r requirements/dev.txt
+        ruff check .
+        black --check .
+        python manage.py check
+        python manage.py makemigrations --check --dry-run
+        python manage.py migrate --noinput
+        pytest --cov --cov-report=term-missing
+    env:
+      - DJANGO_SETTINGS_MODULE=config.settings.testing
+      - DJANGO_SECRET_KEY=ci-only-secret-key-at-least-thirty-two-bytes
+      - TEST_DATABASE_URL=postgresql://stockanalysis:stockanalysis@postgres:5432/stockanalysis_test
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://redis:6379/2
+      - TASK_BACKEND=celery
+    waitFor: [wait-for-services]
+
+  - id: frontend-quality
+    name: node:22-slim
+    dir: frontend
+    entrypoint: bash
+    args:
+      - -ceu
+      - |
+        corepack enable
+        corepack prepare pnpm@10.17.1 --activate
+        pnpm install --frozen-lockfile
+        pnpm typecheck
+        pnpm lint
+        pnpm test
+        pnpm build
+    env:
+      - NEXT_PUBLIC_API_BASE_URL=http://localhost:8000/api/v1
+      - NEXT_PUBLIC_SSE_BASE_URL=http://localhost:8000/api/v1
+    waitFor: ["-"]
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+timeout: 1200s

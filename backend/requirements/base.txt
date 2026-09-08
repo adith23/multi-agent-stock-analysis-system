@@ -8,6 +8,12 @@ django-environ>=0.12,<1.0
 django-guardian>=3.0,<4.0
 django-auditlog>=3.2,<4.0
 drf-spectacular>=0.28,<1.0
+whitenoise>=6.8,<7.0
+
+# Google Cloud Tasks authentication and ML artifact storage
+google-auth>=2.35,<3.0
+google-cloud-storage>=2.18,<4.0
+google-cloud-tasks>=2.16,<3.0
 
 # Agent orchestration and LLM
 langgraph>=1.0,<2.0

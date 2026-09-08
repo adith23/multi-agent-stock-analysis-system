@@ -296,9 +296,7 @@ class AnalysisIngestionService:
     def _lock_parameters(category: str, parameters: dict[str, Any]) -> dict[str, Any]:
         """Canonicalize request windows so near-simultaneous runs share a lock."""
         values = {
-            key: value
-            for key, value in parameters.items()
-            if key not in {"symbol", "exchange"}
+            key: value for key, value in parameters.items() if key not in {"symbol", "exchange"}
         }
         if category in {
             DataCategory.COMPANY_PROFILE,

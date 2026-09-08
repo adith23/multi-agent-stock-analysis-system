@@ -1,4 +1,4 @@
+--extra-index-url https://download.pytorch.org/whl/cpu
 -r base.txt
 
 gunicorn>=23.0,<24.0
-

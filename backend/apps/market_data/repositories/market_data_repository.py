@@ -100,7 +100,8 @@ class MarketDataRepository:
         if availability_cutoff is not None:
             queryset = queryset.filter(available_at__lte=availability_cutoff)
         return (
-            queryset.order_by("-available_at").values(
+            queryset.order_by("-available_at")
+            .values(
                 "legal_name",
                 "description",
                 "website",
@@ -109,7 +110,8 @@ class MarketDataRepository:
                 "shares_outstanding",
                 "attributes",
                 "source_id",
-            ).first()
+            )
+            .first()
             or {}
         )
 

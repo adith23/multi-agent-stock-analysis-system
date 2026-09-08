@@ -144,13 +144,17 @@ class PMReviewService:
 
     @staticmethod
     def _resume(*, run_id: str, decision: str, rationale: str, reviewer_id: str) -> None:
-        from apps.orchestrator.tasks import resume_pm_decision
+        from config.task_backend import dispatch_task
 
-        resume_pm_decision.delay(
-            run_id,
-            decision=decision,
-            rationale=rationale,
-            reviewer_id=reviewer_id,
+        dispatch_task(
+            "apps.orchestrator.tasks.resume_pm_decision",
+            kwargs={
+                "run_id": run_id,
+                "decision": decision,
+                "rationale": rationale,
+                "reviewer_id": reviewer_id,
+            },
+            queue="agents",
         )
 
     @transaction.atomic

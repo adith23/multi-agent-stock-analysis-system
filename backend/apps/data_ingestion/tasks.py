@@ -4,6 +4,7 @@ import logging
 from typing import Any
 
 from celery import shared_task
+from django.conf import settings
 
 from apps.data_ingestion.domain import DataCategory
 from apps.data_ingestion.models import DataSourceConfiguration
@@ -62,8 +63,19 @@ def ingest_enabled_sources(categories: list[str] | None = None) -> dict[str, Any
                 skipped.append(f"{config.source_type}:{category}:no_entities_configured")
                 continue
             for params in parameter_sets:
-                task = ingest_source.delay(config.source_type, category, params)
-                scheduled.append(task.id)
+                if settings.TASK_BACKEND == "cloud_tasks":
+                    from config.task_backend import dispatch_task
+
+                    scheduled.append(
+                        dispatch_task(
+                            "apps.data_ingestion.tasks.ingest_source",
+                            args=(config.source_type, category, params),
+                            queue="ingestion",
+                        )
+                    )
+                else:
+                    task = ingest_source.delay(config.source_type, category, params)
+                    scheduled.append(task.id)
     return {"scheduled_task_ids": scheduled, "skipped": skipped}
 
 

@@ -8,7 +8,6 @@ from celery import Celery
 from celery.signals import task_postrun, task_prerun
 from django.db import close_old_connections
 from django_structlog.celery.steps import DjangoStructLogInitStep
-
 from kombu import Queue
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.production")
@@ -27,6 +26,7 @@ def on_task_prerun(*args, **kwargs) -> None:
 @task_postrun.connect
 def on_task_postrun(*args, **kwargs) -> None:
     close_old_connections()
+
 
 app.conf.task_default_queue = "default"
 app.conf.task_queues = (

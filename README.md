@@ -28,6 +28,7 @@ An institutional-grade, AI-assisted equity research and portfolio decision-suppo
 - [API Reference & Interactive Docs](#api-reference--interactive-docs)
 - [Testing & Quality Verification](#testing--quality-verification)
 - [Governance, Security & Auditability](#governance-security--auditability)
+- [GCP Deployment](docs/gcp-deployment.md)
 
 ---
 

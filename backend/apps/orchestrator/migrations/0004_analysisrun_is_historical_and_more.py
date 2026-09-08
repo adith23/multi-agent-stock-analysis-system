@@ -6,18 +6,18 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('orchestrator', '0003_analysisrun_idempotency_key_analysisrun_request_hash_and_more'),
+        ("orchestrator", "0003_analysisrun_idempotency_key_analysisrun_request_hash_and_more"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='analysisrun',
-            name='is_historical',
+            model_name="analysisrun",
+            name="is_historical",
             field=models.BooleanField(default=False, editable=False),
         ),
         migrations.AddField(
-            model_name='analysisrun',
-            name='knowledge_cutoff_at',
+            model_name="analysisrun",
+            name="knowledge_cutoff_at",
             field=models.DateTimeField(blank=True, db_index=True, editable=False, null=True),
         ),
     ]

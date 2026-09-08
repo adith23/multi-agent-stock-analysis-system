@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Any, AsyncGenerator
+from collections.abc import AsyncGenerator
+from contextlib import suppress
+from typing import Any
 from uuid import uuid4
 
-from django.conf import settings
 import redis
 import redis.asyncio as aioredis
+from django.conf import settings
 
 from .sse import SSEJSONEncoder
 
@@ -102,13 +104,9 @@ class EventBus:
             raise
         finally:
             if pubsub:
-                try:
+                with suppress(Exception):
                     await pubsub.unsubscribe(channel)
                     await pubsub.close()
-                except Exception:
-                    pass
             if client:
-                try:
+                with suppress(Exception):
                     await client.close()
-                except Exception:
-                    pass

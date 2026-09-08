@@ -123,11 +123,7 @@ class SourceRoutingService:
         now: datetime,
     ) -> bool:
         health = next(
-            (
-                item
-                for item in config.category_health.all()
-                if item.data_category == category
-            ),
+            (item for item in config.category_health.all() if item.data_category == category),
             None,
         )
         if health is None or health.last_failure_at is None:

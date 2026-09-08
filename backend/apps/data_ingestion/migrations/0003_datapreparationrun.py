@@ -8,35 +8,73 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('data_ingestion', '0002_normalizeddatarecord_available_at_and_more'),
-        ('market_data', '0002_companyprofile_available_at_and_more'),
-        ('orchestrator', '0004_analysisrun_is_historical_and_more'),
+        ("data_ingestion", "0002_normalizeddatarecord_available_at_and_more"),
+        ("market_data", "0002_companyprofile_available_at_and_more"),
+        ("orchestrator", "0004_analysisrun_is_historical_and_more"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='DataPreparationRun',
+            name="DataPreparationRun",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('created_at', models.DateTimeField(auto_now_add=True, db_index=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('status', models.CharField(choices=[('pending', 'Pending'), ('running', 'Running'), ('ready', 'Ready'), ('degraded', 'Degraded'), ('failed', 'Failed')], db_index=True, default='pending', max_length=20)),
-                ('requested_categories', models.JSONField(default=list)),
-                ('plan', models.JSONField(default=dict)),
-                ('cache_hits', models.JSONField(default=list)),
-                ('source_attempts', models.JSONField(default=list)),
-                ('fallbacks', models.JSONField(default=list)),
-                ('category_results', models.JSONField(default=dict)),
-                ('selected_sources', models.JSONField(default=dict)),
-                ('warnings', models.JSONField(default=list)),
-                ('errors', models.JSONField(default=list)),
-                ('started_at', models.DateTimeField(blank=True, null=True)),
-                ('completed_at', models.DateTimeField(blank=True, null=True)),
-                ('analysis_run', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, related_name='data_preparation', to='orchestrator.analysisrun')),
-                ('ticker', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='data_preparations', to='market_data.ticker')),
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4, editable=False, primary_key=True, serialize=False
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True, db_index=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                (
+                    "status",
+                    models.CharField(
+                        choices=[
+                            ("pending", "Pending"),
+                            ("running", "Running"),
+                            ("ready", "Ready"),
+                            ("degraded", "Degraded"),
+                            ("failed", "Failed"),
+                        ],
+                        db_index=True,
+                        default="pending",
+                        max_length=20,
+                    ),
+                ),
+                ("requested_categories", models.JSONField(default=list)),
+                ("plan", models.JSONField(default=dict)),
+                ("cache_hits", models.JSONField(default=list)),
+                ("source_attempts", models.JSONField(default=list)),
+                ("fallbacks", models.JSONField(default=list)),
+                ("category_results", models.JSONField(default=dict)),
+                ("selected_sources", models.JSONField(default=dict)),
+                ("warnings", models.JSONField(default=list)),
+                ("errors", models.JSONField(default=list)),
+                ("started_at", models.DateTimeField(blank=True, null=True)),
+                ("completed_at", models.DateTimeField(blank=True, null=True)),
+                (
+                    "analysis_run",
+                    models.OneToOneField(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="data_preparation",
+                        to="orchestrator.analysisrun",
+                    ),
+                ),
+                (
+                    "ticker",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT,
+                        related_name="data_preparations",
+                        to="market_data.ticker",
+                    ),
+                ),
             ],
             options={
-                'indexes': [models.Index(fields=['ticker', 'status', '-created_at'], name='data_ingest_ticker__6e6fc5_idx')],
+                "indexes": [
+                    models.Index(
+                        fields=["ticker", "status", "-created_at"],
+                        name="data_ingest_ticker__6e6fc5_idx",
+                    )
+                ],
             },
         ),
     ]

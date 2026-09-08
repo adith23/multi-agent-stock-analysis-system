@@ -8,68 +8,92 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('market_data', '0002_companyprofile_available_at_and_more'),
+        ("market_data", "0002_companyprofile_available_at_and_more"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='SecurityAlias',
+            name="SecurityAlias",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('created_at', models.DateTimeField(auto_now_add=True, db_index=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('provider', models.CharField(max_length=30)),
-                ('provider_symbol', models.CharField(max_length=64)),
-                ('provider_exchange', models.CharField(blank=True, max_length=64)),
-                ('provider_instrument_id', models.CharField(blank=True, max_length=128)),
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4, editable=False, primary_key=True, serialize=False
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True, db_index=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                ("provider", models.CharField(max_length=30)),
+                ("provider_symbol", models.CharField(max_length=64)),
+                ("provider_exchange", models.CharField(blank=True, max_length=64)),
+                ("provider_instrument_id", models.CharField(blank=True, max_length=128)),
             ],
             options={
-                'ordering': ('provider', 'provider_symbol'),
+                "ordering": ("provider", "provider_symbol"),
             },
         ),
         migrations.AlterModelOptions(
-            name='companyprofile',
+            name="companyprofile",
             options={},
         ),
         migrations.AddField(
-            model_name='ticker',
-            name='is_verified',
+            model_name="ticker",
+            name="is_verified",
             field=models.BooleanField(db_index=True, default=False),
         ),
         migrations.AddField(
-            model_name='ticker',
-            name='verification_source',
+            model_name="ticker",
+            name="verification_source",
             field=models.CharField(blank=True, max_length=30),
         ),
         migrations.AddField(
-            model_name='ticker',
-            name='verified_at',
+            model_name="ticker",
+            name="verified_at",
             field=models.DateTimeField(blank=True, null=True),
         ),
         migrations.AlterField(
-            model_name='companyprofile',
-            name='ticker',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='profiles', to='market_data.ticker'),
+            model_name="companyprofile",
+            name="ticker",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="profiles",
+                to="market_data.ticker",
+            ),
         ),
         migrations.AddIndex(
-            model_name='companyprofile',
-            index=models.Index(fields=['ticker', '-available_at'], name='market_data_ticker__01049e_idx'),
+            model_name="companyprofile",
+            index=models.Index(
+                fields=["ticker", "-available_at"], name="market_data_ticker__01049e_idx"
+            ),
         ),
         migrations.AddConstraint(
-            model_name='companyprofile',
-            constraint=models.UniqueConstraint(fields=('ticker', 'source_type', 'content_hash'), name='uq_company_profile_ticker_source_hash'),
+            model_name="companyprofile",
+            constraint=models.UniqueConstraint(
+                fields=("ticker", "source_type", "content_hash"),
+                name="uq_company_profile_ticker_source_hash",
+            ),
         ),
         migrations.AddField(
-            model_name='securityalias',
-            name='ticker',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='aliases', to='market_data.ticker'),
+            model_name="securityalias",
+            name="ticker",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="aliases",
+                to="market_data.ticker",
+            ),
         ),
         migrations.AddIndex(
-            model_name='securityalias',
-            index=models.Index(fields=['provider', 'provider_instrument_id'], name='market_data_provide_85bdb2_idx'),
+            model_name="securityalias",
+            index=models.Index(
+                fields=["provider", "provider_instrument_id"],
+                name="market_data_provide_85bdb2_idx",
+            ),
         ),
         migrations.AddConstraint(
-            model_name='securityalias',
-            constraint=models.UniqueConstraint(fields=('provider', 'provider_symbol', 'provider_exchange'), name='uq_security_alias_provider_symbol_exchange'),
+            model_name="securityalias",
+            constraint=models.UniqueConstraint(
+                fields=("provider", "provider_symbol", "provider_exchange"),
+                name="uq_security_alias_provider_symbol_exchange",
+            ),
         ),
     ]

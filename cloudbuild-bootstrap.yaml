@@ -1,0 +1,50 @@
+# Build and push the first images after Terraform foundation bootstrap.
+substitutions:
+  _GCP_REGION: us-central1
+  _AR_REPO: stock-analysis
+  _IMAGE_TAG: bootstrap
+
+steps:
+  - id: prepare-runtime-urls
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: bash
+    args:
+      - -ceu
+      - |
+        printf '%s' "https://backend-api-${PROJECT_NUMBER}.${_GCP_REGION}.run.app" > /workspace/backend-url.txt
+
+  - id: build-backend
+    name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - --file=docker/Dockerfile
+      - --tag=${_GCP_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/backend:${_IMAGE_TAG}
+      - .
+
+  - id: build-frontend
+    name: gcr.io/cloud-builders/docker
+    entrypoint: bash
+    args:
+      - -ceu
+      - |
+        BACKEND_URL=$$(cat /workspace/backend-url.txt)
+        docker build --file=docker/Dockerfile.frontend \
+          --build-arg="NEXT_PUBLIC_API_BASE_URL=$${BACKEND_URL}/api/v1" \
+          --build-arg="NEXT_PUBLIC_SSE_BASE_URL=$${BACKEND_URL}/api/v1" \
+          --tag="${_GCP_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/frontend:${_IMAGE_TAG}" .
+    waitFor: [prepare-runtime-urls]
+
+  - id: push-backend
+    name: gcr.io/cloud-builders/docker
+    args: [push, "${_GCP_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/backend:${_IMAGE_TAG}"]
+    waitFor: [build-backend]
+
+  - id: push-frontend
+    name: gcr.io/cloud-builders/docker
+    args: [push, "${_GCP_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/frontend:${_IMAGE_TAG}"]
+    waitFor: [build-frontend]
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+timeout: 1800s

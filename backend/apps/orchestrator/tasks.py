@@ -95,6 +95,43 @@ def build_analysis_canvas(run_id: str):
     )
 
 
+@shared_task(name="apps.orchestrator.tasks.run_full_pipeline")
+def run_full_pipeline(run_id: str) -> dict[str, Any]:
+    """Run the analysis through Celery locally or in-process on Cloud Run."""
+    if settings.TASK_BACKEND != "cloud_tasks":
+        result = build_analysis_canvas(run_id).apply_async()
+        return {"celery_task_id": str(result.id)}
+    return _run_pipeline_synchronously(run_id)
+
+
+def _run_pipeline_synchronously(run_id: str) -> dict[str, Any]:
+    """Execute the free-tier Cloud Tasks pipeline within one HTTP request."""
+    run = repository.get(run_id)
+    preparation = AnalysisDataReadinessService().create_plan(run)
+    start_data_preparation.run(run_id)
+    for category, entry in preparation.plan.items():
+        if entry.get("fetch"):
+            ingest_analysis_category.run(run_id, category)
+    finalize_data_preparation.run(run_id)
+
+    for domain in ("technical", "fundamental", "macro", "sentiment"):
+        extract_signal_domain.run(run_id, domain)
+    signals_completed.run(run_id)
+
+    for agent_id in ("macro", "fundamental", "technical", "sentiment"):
+        run_specialist_agent.run(run_id, agent_id)
+    specialists_completed.run(run_id)
+
+    run_peer_analysis.run(run_id)
+    run_adversarial_review.run(run_id)
+    run_conviction_scoring.run(run_id)
+    run_risk_validation.run(run_id)
+    run_compliance_check.run(run_id)
+    run_position_sizing.run(run_id)
+    run_portfolio_optimization.run(run_id)
+    return run_pm_synthesis.run(run_id)
+
+
 @shared_task(name="apps.orchestrator.tasks.start_data_preparation")
 def start_data_preparation(run_id: str) -> dict[str, Any]:
     run = repository.get(run_id)

@@ -8,6 +8,7 @@
 .env
 .env.*
 !.env.example
+!frontend/.env.production
 *.pem
 *.key
 *.cert
@@ -98,6 +99,14 @@ torch_cache/
 # ------------------------------------------------------------------------------
 docker-compose.override.yml
 docker/docker-compose.override.yml
+
+# Terraform local state and provider cache
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+backend.hcl
+terraform.tfvars
 
 # ------------------------------------------------------------------------------
 # 9. Logs

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
 from uuid import UUID
 
 from asgiref.sync import sync_to_async
@@ -24,7 +24,9 @@ HEARTBEAT_INTERVAL_SECONDS = 15.0
 
 def _authenticate_request(request) -> AccessToken | None:
     """Validate JWT from Authorization Bearer header or fallback query parameter."""
-    auth_header = request.headers.get("Authorization") or request.META.get("HTTP_AUTHORIZATION", "")
+    auth_header = request.headers.get("Authorization") or request.META.get(
+        "HTTP_AUTHORIZATION", ""
+    )
     token_str = ""
 
     if auth_header.startswith("Bearer "):
@@ -56,7 +58,9 @@ class PipelineStreamView(View):
     async def get(self, request, run_id: UUID) -> HttpResponse:
         token = _authenticate_request(request)
         if token is None:
-            return JsonResponse({"detail": "Authentication credentials were not provided or invalid."}, status=401)
+            return JsonResponse(
+                {"detail": "Authentication credentials were not provided or invalid."}, status=401
+            )
 
         run_id_str = str(run_id)
         last_event_id = _get_last_event_id(request)
@@ -92,7 +96,15 @@ class PipelineStreamView(View):
         steps = (
             PipelineStepResult.objects.filter(analysis_run_id=run_id_str)
             .order_by("sequence", "attempt")
-            .values("id", "step_name", "sequence", "status", "output_snapshot", "started_at", "completed_at")
+            .values(
+                "id",
+                "step_name",
+                "sequence",
+                "status",
+                "output_snapshot",
+                "started_at",
+                "completed_at",
+            )
         )
         return list(steps)
 
@@ -118,9 +130,11 @@ class PipelineStreamView(View):
                 data={
                     "stage": step["step_name"],
                     "sequence": step["sequence"],
-                    "timestamp": (step["completed_at"] or step["started_at"] or timezone.now()).isoformat()
-                    if hasattr(step["completed_at"] or step["started_at"], "isoformat")
-                    else str(step["completed_at"] or step["started_at"]),
+                    "timestamp": (
+                        (step["completed_at"] or step["started_at"] or timezone.now()).isoformat()
+                        if hasattr(step["completed_at"] or step["started_at"], "isoformat")
+                        else str(step["completed_at"] or step["started_at"])
+                    ),
                     "output": step.get("output_snapshot", {}),
                 },
                 event_id=step_id,
@@ -156,7 +170,9 @@ class PipelineStreamView(View):
             generator = EventBus.listen_channel(channel)
             while True:
                 try:
-                    event = await asyncio.wait_for(generator.__anext__(), timeout=HEARTBEAT_INTERVAL_SECONDS)
+                    event = await asyncio.wait_for(
+                        generator.__anext__(), timeout=HEARTBEAT_INTERVAL_SECONDS
+                    )
                     event_type = event.get("event", "message")
                     data = event.get("data", {})
                     event_id = event.get("id")
@@ -171,7 +187,7 @@ class PipelineStreamView(View):
                     if event_type in {"pipeline_completed", "pipeline_failed"}:
                         break
 
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     # Emit heartbeat keep-alive comment
                     yield format_heartbeat()
 
@@ -180,10 +196,16 @@ class PipelineStreamView(View):
                     if fresh and fresh["status"] == PipelineStatus.COMPLETED:
                         yield format_sse_event(
                             "pipeline_completed",
-                            {"run_id": run_id_str, "timestamp": fresh["completed_at"] or timezone.now().isoformat()},
+                            {
+                                "run_id": run_id_str,
+                                "timestamp": fresh["completed_at"] or timezone.now().isoformat(),
+                            },
                         )
                         break
-                    elif fresh and fresh["status"] in {PipelineStatus.FAILED, PipelineStatus.CANCELLED}:
+                    elif fresh and fresh["status"] in {
+                        PipelineStatus.FAILED,
+                        PipelineStatus.CANCELLED,
+                    }:
                         yield format_sse_event(
                             "pipeline_failed",
                             {
@@ -207,7 +229,9 @@ class AlertStreamView(View):
     async def get(self, request) -> HttpResponse:
         token = _authenticate_request(request)
         if token is None:
-            return JsonResponse({"detail": "Authentication credentials were not provided or invalid."}, status=401)
+            return JsonResponse(
+                {"detail": "Authentication credentials were not provided or invalid."}, status=401
+            )
 
         response = StreamingHttpResponse(
             self._event_generator(),
@@ -225,7 +249,9 @@ class AlertStreamView(View):
             generator = EventBus.listen_channel(channel)
             while True:
                 try:
-                    event = await asyncio.wait_for(generator.__anext__(), timeout=HEARTBEAT_INTERVAL_SECONDS)
+                    event = await asyncio.wait_for(
+                        generator.__anext__(), timeout=HEARTBEAT_INTERVAL_SECONDS
+                    )
                     event_type = event.get("event", "message")
                     data = event.get("data", {})
                     event_id = event.get("id")
@@ -235,7 +261,7 @@ class AlertStreamView(View):
                         data=data,
                         event_id=event_id,
                     )
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     yield format_heartbeat()
         except (asyncio.CancelledError, GeneratorExit):
             logger.info("SSE client disconnected from alerts stream")

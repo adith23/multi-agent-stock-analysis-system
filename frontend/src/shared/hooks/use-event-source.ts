@@ -76,7 +76,6 @@ export function useEventSource(
 
     const abortController = new AbortController();
     abortControllerRef.current = abortController;
-    setConnection({ url, status: "connecting" });
 
     const allowedTypes: string[] = JSON.parse(eventTypesKey);
     const filterEventTypes = allowedTypes.length > 0;
